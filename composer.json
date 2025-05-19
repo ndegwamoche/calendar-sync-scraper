@@ -1,0 +1,9 @@
+{
+    "require-dev": {
+        "symfony/panther": "^2.2"
+    },
+    "require": {
+        "guzzlehttp/guzzle": "^7.9",
+        "vlucas/phpdotenv": "^5.6"
+    }
+}
