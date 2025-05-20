@@ -27,8 +27,14 @@ class Admin_UI
     {
         if ($hook !== 'toplevel_page_calendar-sync-scraper') return;
 
-        wp_enqueue_style('calendar-sync-scraper-css', CAL_SYNC_SCRAPER_URL . 'assets/css/admin-style.css');
-        wp_enqueue_script('calendar-sync-scraper-js', CAL_SYNC_SCRAPER_URL . 'assets/js/admin-scraper.js', ['jquery'], null, true);
+        wp_enqueue_script(
+            'calendar-sync-scraper-js',
+            CAL_SYNC_SCRAPER_URL . 'build/index.js',
+            ['wp-blocks', 'wp-element', 'wp-editor', 'wp-components'],
+            filemtime(CAL_SYNC_SCRAPER_PATH . 'build/index.js'),
+            true
+        );
+
         wp_localize_script('calendar-sync-scraper-js', 'calendarScraperAjax', [
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce'    => wp_create_nonce('calendar_scraper_nonce')

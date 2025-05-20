@@ -1,6 +1,6 @@
 {
-    "name": "grok/table-tennis-scraper",
-    "description": "A standalone PHP script to scrape table tennis match results",
+    "name": "moche/calendar-sync-scraper",
+    "description": "Scrapes calendar data from a specified URL and syncs it to Google Calendar. Supports automated scheduling and logs each run for tracking",
     "require": {
         "php": ">=7.4",
         "php-webdriver/webdriver": "^1.14",
@@ -9,7 +9,7 @@
     },
     "autoload": {
         "psr-4": {
-            "TableTennisScraper\\": "src/"
+            "CalendarSyncScraper\\": "src/"
         }
     }
 }
