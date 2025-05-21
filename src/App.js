@@ -7,12 +7,19 @@ const App = () => {
     const [progress, setProgress] = useState(0);
     const [log, setLog] = useState({ message: '', matches: [] });
     const [formData, setFormData] = useState({
-        season: '',
+        season: '42024',
         linkStructure: 'https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#4,{season},{pool},{group},{region},,,,',
         venue: '',
+        region: '4004', // Default to ØST (Sjælland, Lolland F.)
+        ageGroup: '4006', // Default to Senior
+        pool: '14822', // Default to Pool
     });
     const [errors, setErrors] = useState({});
+    const [showDropdowns, setShowDropdowns] = useState(false);
+    const [pools, setPools] = useState([]);
     const seasons = window.calendarScraperAjax?.seasons || [];
+    const regions = window.calendarScraperAjax?.regions || [];
+    const ageGroups = window.calendarScraperAjax?.age_groups || [];
 
     // Validation function
     const validateForm = () => {
@@ -55,6 +62,27 @@ const App = () => {
         }
     };
 
+    // Fetch dropdown options from DB when season, region, or age group changes
+    useEffect(() => {
+        if (formData.season) {
+            fetch(`${calendarScraperAjax.ajax_url}?action=get_tournament_options&season=${formData.season}&region=${formData.region}&age_group=${formData.ageGroup}&_ajax_nonce=${calendarScraperAjax.nonce}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.success) {
+                        setPools(data.data.pools || []);
+                    }
+                })
+                .catch((error) => console.error('Error fetching pools:', error));
+        } else {
+            setPools([]);
+        }
+    }, [formData.season, formData.region, formData.ageGroup]);
+
     // Simulate progress while scraping
     useEffect(() => {
         let interval;
@@ -93,6 +121,9 @@ const App = () => {
                     season: formData.season,
                     link_structure: formData.linkStructure,
                     venue: formData.venue,
+                    region: formData.region,
+                    age_group: formData.ageGroup,
+                    pool: formData.pool,
                 }),
             });
 
@@ -173,49 +204,106 @@ const App = () => {
                         <div id="main" className="tab-section active">
                             <form id="calendar-scraper-form" onSubmit={(e) => e.preventDefault()}>
                                 <div className="form-section">
-                                    <label htmlFor="season-select" className="form-label">Select Season:</label>
-                                    <select
-                                        id="season-select"
-                                        name="season"
-                                        className={`form-select ${errors.season ? 'has-error' : ''}`}
-                                        value={formData.season}
-                                        onChange={handleInputChange}
-                                    >
-                                        <option value="">-- Select Season --</option>
-                                        {seasons.map((season) => (
-                                            <option key={season.season_value} value={season.season_value}>
-                                                {season.season_name}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <div className="form-control-group">
+                                        <label htmlFor="season-select" className="form-label">Select Season:</label>
+                                        <select
+                                            id="season-select"
+                                            name="season"
+                                            className={`form-select ${errors.season ? 'has-error' : ''}`}
+                                            value={formData.season}
+                                            onChange={handleInputChange}
+                                        >
+                                            <option value="">-- Select Season --</option>
+                                            {seasons.map((season) => (
+                                                <option key={season.season_value} value={season.season_value}>
+                                                    {season.season_name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
                                     {errors.season && <span className="error-message">{errors.season}</span>}
+                                    <a href="#" className="advanced-link" onClick={(e) => { e.preventDefault(); setShowDropdowns(!showDropdowns); }}>Advanced Settings</a>
                                 </div>
 
+                                {showDropdowns && (
+                                    <div className="form-section dropdown-row">
+                                        <label htmlFor="region-select" className="form-label"></label>
+                                        <select
+                                            id="region-select"
+                                            name="region"
+                                            className={`form-select ${errors.region ? 'has-error' : ''}`}
+                                            value={formData.region}
+                                            onChange={handleInputChange}
+                                        >
+                                            <option value="">-- Select Region --</option>
+                                            {regions.map((region) => (
+                                                <option key={region.region_value} value={region.region_value}>
+                                                    {region.region_name}
+                                                </option>
+                                            ))}
+                                        </select>
+
+                                        <select
+                                            id="age-group-select"
+                                            name="ageGroup"
+                                            className={`form-select ${errors.ageGroup ? 'has-error' : ''}`}
+                                            value={formData.ageGroup}
+                                            onChange={handleInputChange}
+                                        >
+                                            <option value="">-- Select Age Group --</option>
+                                            {ageGroups.map((ageGroup) => (
+                                                <option key={ageGroup.age_group_value} value={ageGroup.age_group_value}>
+                                                    {ageGroup.age_group_name}
+                                                </option>
+                                            ))}
+                                        </select>
+
+                                        <select
+                                            id="pool-select"
+                                            name="pool"
+                                            className={`form-select ${errors.pool ? 'has-error' : ''}`}
+                                            value={formData.pool}
+                                            onChange={handleInputChange}
+                                        >
+                                            <option value="">-- Select Pool --</option>
+                                            {pools.map((pool) => (
+                                                <option key={pool.pool_value} value={pool.pool_value}>
+                                                    {pool.tournament_level} - {pool.pool_name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
                                 <div className="form-section">
-                                    <label htmlFor="link-structure" className="form-label">Link Structure:</label>
-                                    <input
-                                        type="text"
-                                        id="link-structure"
-                                        name="linkStructure"
-                                        className={`form-input ${errors.linkStructure ? 'has-error' : ''}`}
-                                        value={formData.linkStructure}
-                                        onChange={handleInputChange}
-                                        placeholder="Enter link structure name"
-                                    />
+                                    <div className="form-control-group">
+                                        <label htmlFor="link-structure" className="form-label">Link Structure:</label>
+                                        <input
+                                            type="text"
+                                            id="link-structure"
+                                            name="linkStructure"
+                                            className={`form-input ${errors.linkStructure ? 'has-error' : ''}`}
+                                            value={formData.linkStructure}
+                                            onChange={handleInputChange}
+                                            placeholder="Enter link structure name"
+                                        />
+                                    </div>
                                     {errors.linkStructure && <span className="error-message">{errors.linkStructure}</span>}
                                 </div>
 
                                 <div className="form-section">
-                                    <label htmlFor="venue" className="form-label">Venue:</label>
-                                    <input
-                                        type="text"
-                                        id="venue"
-                                        name="venue"
-                                        className={`form-input ${errors.venue ? 'has-error' : ''}`}
-                                        value={formData.venue}
-                                        onChange={handleInputChange}
-                                        placeholder="Enter venue name"
-                                    />
+                                    <div className="form-control-group">
+                                        <label htmlFor="venue" className="form-label">Venue:</label>
+                                        <input
+                                            type="text"
+                                            id="venue"
+                                            name="venue"
+                                            className={`form-input ${errors.venue ? 'has-error' : ''}`}
+                                            value={formData.venue}
+                                            onChange={handleInputChange}
+                                            placeholder="Enter venue name"
+                                        />
+                                    </div>
                                     {errors.venue && <span className="error-message">{errors.venue}</span>}
                                 </div>
 

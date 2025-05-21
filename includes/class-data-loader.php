@@ -9,6 +9,7 @@ class Data_Loader
     private $regions_table;
     private $age_groups_table;
     private $tournament_levels_table;
+    private $tournament_pools_table;
 
     public function __construct()
     {
@@ -20,6 +21,7 @@ class Data_Loader
         $this->regions_table = $wpdb->prefix . 'cal_sync_regions';
         $this->age_groups_table = $wpdb->prefix . 'cal_sync_age_groups';
         $this->tournament_levels_table = $wpdb->prefix . 'cal_sync_tournament_levels';
+        $this->tournament_pools_table = $wpdb->prefix . 'cal_sync_tournament_pools';
     }
 
     public function get_seasons()
@@ -54,6 +56,32 @@ class Data_Loader
         ) ?: [];
     }
 
+    public function get_tournament_pools()
+    {
+        $season = sanitize_text_field($_GET['season']);
+        $region = sanitize_text_field($_GET['region']);
+        $age_group = sanitize_text_field($_GET['age_group']);
+
+        return $this->wpdb->get_results(
+            $this->wpdb->prepare(
+                "SELECT
+                    tp.id,
+                    tp.pool_name,
+                    tp.pool_value,
+                    tp.tournament_level
+                FROM
+                    {$this->tournament_pools_table} tp
+                WHERE tp.season_id = %d
+                AND tp.region_id = %d
+                AND tp.age_group_id = %d",
+                $season,
+                $region,
+                $age_group
+            ),
+            ARRAY_A
+        ) ?: [];
+    }
+
     public function get_all_data()
     {
         return [
@@ -61,6 +89,7 @@ class Data_Loader
             'regions' => $this->get_regions(),
             'age_groups' => $this->get_age_groups(),
             'tournament_levels' => $this->get_tournament_levels(),
+            'tournament_pools' => $this->get_tournament_pools(),
         ];
     }
 }

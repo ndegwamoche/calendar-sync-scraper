@@ -62,12 +62,21 @@ const App = () => {
     matches: []
   });
   const [formData, setFormData] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
-    season: '',
+    season: '42024',
     linkStructure: 'https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#4,{season},{pool},{group},{region},,,,',
-    venue: ''
+    venue: '',
+    region: '4004',
+    // Default to ØST (Sjælland, Lolland F.)
+    ageGroup: '4006',
+    // Default to Senior
+    pool: '14822' // Default to Pool
   });
   const [errors, setErrors] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({});
+  const [showDropdowns, setShowDropdowns] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
+  const [pools, setPools] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
   const seasons = window.calendarScraperAjax?.seasons || [];
+  const regions = window.calendarScraperAjax?.regions || [];
+  const ageGroups = window.calendarScraperAjax?.age_groups || [];
 
   // Validation function
   const validateForm = () => {
@@ -112,6 +121,24 @@ const App = () => {
     }
   };
 
+  // Fetch dropdown options from DB when season, region, or age group changes
+  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
+    if (formData.season) {
+      fetch(`${calendarScraperAjax.ajax_url}?action=get_tournament_options&season=${formData.season}&region=${formData.region}&age_group=${formData.ageGroup}&_ajax_nonce=${calendarScraperAjax.nonce}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }).then(response => response.json()).then(data => {
+        if (data.success) {
+          setPools(data.data.pools || []);
+        }
+      }).catch(error => console.error('Error fetching pools:', error));
+    } else {
+      setPools([]);
+    }
+  }, [formData.season, formData.region, formData.ageGroup]);
+
   // Simulate progress while scraping
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
     let interval;
@@ -152,7 +179,10 @@ const App = () => {
           _ajax_nonce: calendarScraperAjax.nonce,
           season: formData.season,
           link_structure: formData.linkStructure,
-          venue: formData.venue
+          venue: formData.venue,
+          region: formData.region,
+          age_group: formData.ageGroup,
+          pool: formData.pool
         })
       });
       const data = await response.json();
@@ -243,59 +273,121 @@ const App = () => {
             onSubmit: e => e.preventDefault(),
             children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
               className: "form-section",
-              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("label", {
-                htmlFor: "season-select",
-                className: "form-label",
-                children: "Select Season:"
-              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("select", {
-                id: "season-select",
-                name: "season",
-                className: `form-select ${errors.season ? 'has-error' : ''}`,
-                value: formData.season,
-                onChange: handleInputChange,
-                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
-                  value: "",
-                  children: "-- Select Season --"
-                }), seasons.map(season => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
-                  value: season.season_value,
-                  children: season.season_name
-                }, season.season_value))]
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
+                className: "form-control-group",
+                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("label", {
+                  htmlFor: "season-select",
+                  className: "form-label",
+                  children: "Select Season:"
+                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("select", {
+                  id: "season-select",
+                  name: "season",
+                  className: `form-select ${errors.season ? 'has-error' : ''}`,
+                  value: formData.season,
+                  onChange: handleInputChange,
+                  children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
+                    value: "",
+                    children: "-- Select Season --"
+                  }), seasons.map(season => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
+                    value: season.season_value,
+                    children: season.season_name
+                  }, season.season_value))]
+                })]
               }), errors.season && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("span", {
                 className: "error-message",
                 children: errors.season
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("a", {
+                href: "#",
+                className: "advanced-link",
+                onClick: e => {
+                  e.preventDefault();
+                  setShowDropdowns(!showDropdowns);
+                },
+                children: "Advanced Settings"
+              })]
+            }), showDropdowns && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
+              className: "form-section dropdown-row",
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("label", {
+                htmlFor: "region-select",
+                className: "form-label"
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("select", {
+                id: "region-select",
+                name: "region",
+                className: `form-select ${errors.region ? 'has-error' : ''}`,
+                value: formData.region,
+                onChange: handleInputChange,
+                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
+                  value: "",
+                  children: "-- Select Region --"
+                }), regions.map(region => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
+                  value: region.region_value,
+                  children: region.region_name
+                }, region.region_value))]
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("select", {
+                id: "age-group-select",
+                name: "ageGroup",
+                className: `form-select ${errors.ageGroup ? 'has-error' : ''}`,
+                value: formData.ageGroup,
+                onChange: handleInputChange,
+                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
+                  value: "",
+                  children: "-- Select Age Group --"
+                }), ageGroups.map(ageGroup => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
+                  value: ageGroup.age_group_value,
+                  children: ageGroup.age_group_name
+                }, ageGroup.age_group_value))]
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("select", {
+                id: "pool-select",
+                name: "pool",
+                className: `form-select ${errors.pool ? 'has-error' : ''}`,
+                value: formData.pool,
+                onChange: handleInputChange,
+                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
+                  value: "",
+                  children: "-- Select Pool --"
+                }), pools.map(pool => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("option", {
+                  value: pool.pool_value,
+                  children: [pool.tournament_level, " - ", pool.pool_name]
+                }, pool.pool_value))]
               })]
             }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
               className: "form-section",
-              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("label", {
-                htmlFor: "link-structure",
-                className: "form-label",
-                children: "Link Structure:"
-              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("input", {
-                type: "text",
-                id: "link-structure",
-                name: "linkStructure",
-                className: `form-input ${errors.linkStructure ? 'has-error' : ''}`,
-                value: formData.linkStructure,
-                onChange: handleInputChange,
-                placeholder: "Enter link structure name"
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
+                className: "form-control-group",
+                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("label", {
+                  htmlFor: "link-structure",
+                  className: "form-label",
+                  children: "Link Structure:"
+                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("input", {
+                  type: "text",
+                  id: "link-structure",
+                  name: "linkStructure",
+                  className: `form-input ${errors.linkStructure ? 'has-error' : ''}`,
+                  value: formData.linkStructure,
+                  onChange: handleInputChange,
+                  placeholder: "Enter link structure name"
+                })]
               }), errors.linkStructure && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("span", {
                 className: "error-message",
                 children: errors.linkStructure
               })]
             }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
               className: "form-section",
-              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("label", {
-                htmlFor: "venue",
-                className: "form-label",
-                children: "Venue:"
-              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("input", {
-                type: "text",
-                id: "venue",
-                name: "venue",
-                className: `form-input ${errors.venue ? 'has-error' : ''}`,
-                value: formData.venue,
-                onChange: handleInputChange,
-                placeholder: "Enter venue name"
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
+                className: "form-control-group",
+                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("label", {
+                  htmlFor: "venue",
+                  className: "form-label",
+                  children: "Venue:"
+                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("input", {
+                  type: "text",
+                  id: "venue",
+                  name: "venue",
+                  className: `form-input ${errors.venue ? 'has-error' : ''}`,
+                  value: formData.venue,
+                  onChange: handleInputChange,
+                  placeholder: "Enter venue name"
+                })]
               }), errors.venue && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("span", {
                 className: "error-message",
                 children: errors.venue

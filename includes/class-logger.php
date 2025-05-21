@@ -4,36 +4,61 @@ namespace Calendar_Sync_Scraper;
 
 class Logger
 {
+    public function __construct() {}
 
-    public function __construct()
-    {
-        register_activation_hook(__FILE__, [$this, 'create_log_table']);
-    }
-
-    public function create_log_table()
+    public function start_log($season_id, $region_id, $age_group_id, $pool_id)
     {
         global $wpdb;
-        $table = $wpdb->prefix . 'calendar_scraper_log';
-        $charset_collate = $wpdb->get_charset_collate();
+        $wpdb->insert(
+            $wpdb->prefix . 'cal_sync_logs',
+            [
+                'start_datetime' => current_time('mysql'),
+                'season_id' => $season_id,
+                'region_id' => $region_id,
+                'age_group_id' => $age_group_id,
+                'pool_id' => $pool_id,
+                'status' => 'running',
+                'total_matches' => 0
+            ]
+        );
+        return $wpdb->insert_id;
+    }
 
-        $sql = "CREATE TABLE $table (
-            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            run_time DATETIME NOT NULL,
-            status VARCHAR(20) NOT NULL,
-            message TEXT
-        ) $charset_collate;";
+    public function update_log($log_id, $total_matches = 0, $error_message = null)
+    {
+        global $wpdb;
+        $data = ['total_matches' => $total_matches];
+        if ($error_message) {
+            $data['error_message'] = $error_message;
+            $data['status'] = 'failed';
+        }
+        $wpdb->update(
+            $wpdb->prefix . 'cal_sync_logs',
+            $data,
+            ['id' => $log_id]
+        );
+    }
 
-        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-        dbDelta($sql);
+    public function complete_log($log_id)
+    {
+        global $wpdb;
+        $wpdb->update(
+            $wpdb->prefix . 'cal_sync_logs',
+            [
+                'close_datetime' => current_time('mysql'),
+                'status' => 'completed'
+            ],
+            ['id' => $log_id]
+        );
     }
 
     public function log($status, $message = '')
     {
         global $wpdb;
         $wpdb->insert(
-            $wpdb->prefix . 'calendar_scraper_log',
+            $wpdb->prefix . 'cal_sync_logs',
             [
-                'run_time' => current_time('mysql'),
+                'start_datetime' => current_time('mysql'),
                 'status' => $status,
                 'message' => $message
             ]
@@ -43,7 +68,7 @@ class Logger
     public function get_logs($limit = 20)
     {
         global $wpdb;
-        $table = $wpdb->prefix . 'calendar_scraper_log';
-        return $wpdb->get_results("SELECT * FROM $table ORDER BY run_time DESC LIMIT %d", OBJECT, $limit);
+        $table = $wpdb->prefix . 'cal_sync_logs'; // Corrected table name
+        return $wpdb->get_results("SELECT * FROM $table ORDER BY start_datetime DESC LIMIT $limit", OBJECT);
     }
 }

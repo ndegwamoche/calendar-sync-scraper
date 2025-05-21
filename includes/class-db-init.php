@@ -10,6 +10,7 @@ class DB_Init
     public $age_groups_table;
     public $tournament_levels_table;
     public $tournament_pools_table;
+    public $logs_table;
 
     public function __construct()
     {
@@ -21,6 +22,7 @@ class DB_Init
         $this->age_groups_table = $wpdb->prefix . 'cal_sync_age_groups';
         $this->tournament_levels_table = $wpdb->prefix . 'cal_sync_tournament_levels';
         $this->tournament_pools_table = $wpdb->prefix . 'cal_sync_tournament_pools';
+        $this->logs_table = $wpdb->prefix . 'cal_sync_logs';
     }
 
     public function create_tables()
@@ -63,6 +65,9 @@ class DB_Init
         $sql = "CREATE TABLE IF NOT EXISTS {$this->tournament_levels_table} (
             id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
             level_name VARCHAR(200) NOT NULL,
+            season_id BIGINT(20) UNSIGNED NOT NULL,
+            region_id BIGINT(20) UNSIGNED NOT NULL,
+            age_group_id BIGINT(20) UNSIGNED NOT NULL,
             PRIMARY KEY (id),
             UNIQUE KEY level_name (level_name)
         ) $charset_collate;";
@@ -75,11 +80,28 @@ class DB_Init
             pool_name VARCHAR(100) NOT NULL,
             pool_value INT NOT NULL,
             is_playoff TINYINT(1) DEFAULT 0,
-            season_id INT NOT NULL,
-            region_id INT NOT NULL,
-            age_group_id INT NOT NULL,
+            season_id BIGINT(20) UNSIGNED NOT NULL,
+            region_id BIGINT(20) UNSIGNED NOT NULL,
+            age_group_id BIGINT(20) UNSIGNED NOT NULL,
             PRIMARY KEY (id),
             UNIQUE KEY pool_value (pool_value)
+        ) $charset_collate;";
+        dbDelta($sql);
+
+        // Logs table
+        $sql = "CREATE TABLE IF NOT EXISTS {$this->logs_table} (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            start_datetime DATETIME NOT NULL,
+            close_datetime DATETIME DEFAULT NULL,
+            season_id BIGINT(20) UNSIGNED NOT NULL,
+            region_id BIGINT(20) UNSIGNED NOT NULL,
+            age_group_id BIGINT(20) UNSIGNED NOT NULL,
+            pool_id BIGINT(20) UNSIGNED NOT NULL,
+            status VARCHAR(50) NOT NULL,
+            error_message TEXT DEFAULT NULL,
+            total_matches INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id)
         ) $charset_collate;";
         dbDelta($sql);
 
@@ -173,20 +195,20 @@ class DB_Init
 
         // Insert Tournament Levels
         $tournament_levels = [
-            ['level_name' => 'Østserien'],
-            ['level_name' => 'Serie 1'],
-            ['level_name' => 'Serie 2'],
-            ['level_name' => 'Serie 3'],
-            ['level_name' => 'Serie 4'],
-            ['level_name' => 'Serie 5'],
-            ['level_name' => 'Kval.kampe til østserien'],
-            ['level_name' => 'Kval.kampe til serie 1'],
-            ['level_name' => 'Slutspil Østserien / Kval til 3.div'],
-            ['level_name' => 'Slutspil Serie 1'],
-            ['level_name' => 'Slutspil Serie 2'],
-            ['level_name' => 'Slutspil Serie 3'],
-            ['level_name' => 'Slutspil Serie 4'],
-            ['level_name' => 'Slutspil Serie 5'],
+            ['level_name' => 'Østserien', 'season_id' => 42024, 'region_id' => 4004, 'age_group_id' => 4006],
+            ['level_name' => 'Serie 1', 'season_id' => 42024, 'region_id' => 4004, 'age_group_id' => 4006],
+            ['level_name' => 'Serie 2', 'season_id' => 42024, 'region_id' => 4004, 'age_group_id' => 4006],
+            ['level_name' => 'Serie 3', 'season_id' => 42024, 'region_id' => 4004, 'age_group_id' => 4006],
+            ['level_name' => 'Serie 4', 'season_id' => 42024, 'region_id' => 4004, 'age_group_id' => 4006],
+            ['level_name' => 'Serie 5', 'season_id' => 42024, 'region_id' => 4004, 'age_group_id' => 4006],
+            ['level_name' => 'Kval.kampe til østserien', 'season_id' => 42024, 'region_id' => 4004, 'age_group_id' => 4006],
+            ['level_name' => 'Kval.kampe til serie 1', 'season_id' => 42024, 'region_id' => 4004, 'age_group_id' => 4006],
+            ['level_name' => 'Slutspil Østserien / Kval til 3.div', 'season_id' => 42024, 'region_id' => 4004, 'age_group_id' => 4006],
+            ['level_name' => 'Slutspil Serie 1', 'season_id' => 42024, 'region_id' => 4004, 'age_group_id' => 4006],
+            ['level_name' => 'Slutspil Serie 2', 'season_id' => 42024, 'region_id' => 4004, 'age_group_id' => 4006],
+            ['level_name' => 'Slutspil Serie 3', 'season_id' => 42024, 'region_id' => 4004, 'age_group_id' => 4006],
+            ['level_name' => 'Slutspil Serie 4', 'season_id' => 42024, 'region_id' => 4004, 'age_group_id' => 4006],
+            ['level_name' => 'Slutspil Serie 5', 'season_id' => 42024, 'region_id' => 4004, 'age_group_id' => 4006],
         ];
         foreach ($tournament_levels as $level) {
             $wpdb->replace($this->tournament_levels_table, $level);

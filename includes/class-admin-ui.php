@@ -18,6 +18,7 @@ class Admin_UI
         add_action('admin_menu', [$this, 'register_admin_page']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('wp_ajax_run_calendar_scraper', [$this, 'handle_run_scraper']);
+        add_action('wp_ajax_get_tournament_options', [$this, 'get_tournament_options']);
     }
 
     public function register_admin_page()
@@ -70,6 +71,20 @@ class Admin_UI
     public function handle_run_scraper()
     {
         $this->scraper->run_scraper();
+    }
+
+    public function get_tournament_options()
+    {
+        $response = ['success' => false, 'data' => []];
+
+        $pools = $this->data_loader->get_tournament_pools();
+
+        $response['success'] = true;
+        $response['data'] = [
+            'pools' => $pools,
+        ];
+
+        wp_send_json($response);
     }
 
     public function render_settings_page()

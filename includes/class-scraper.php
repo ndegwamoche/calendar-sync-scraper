@@ -12,11 +12,13 @@ use Symfony\Component\DomCrawler\Crawler;
 class Scraper
 {
     private $wpdb;
+    private $logger;
 
     public function __construct()
     {
         global $wpdb;
         $this->wpdb = $wpdb;
+        $this->logger = new Logger();
     }
 
     public function run_scraper()
@@ -30,22 +32,31 @@ class Scraper
             $season = sanitize_text_field($_POST['season']);
             $linkStructure = sanitize_text_field($_POST['link_structure']);
             $venue = sanitize_text_field($_POST['venue']);
+            $region = sanitize_text_field($_POST['region']);
+            $ageGroup = sanitize_text_field($_POST['age_group']);
+            $pool = sanitize_text_field($_POST['pool']);
 
-            // Default values for region and age group (to be replaced with form inputs later)
-            $region = 4006; // Default to ØST (Sjælland, Lolland F.)
-            $ageGroup = 4006; // Default to Senior
-            $pool = 14822; // Default to Pool
+            $log_id = $this->logger->start_log($season, $region, $ageGroup, $pool);
 
-            // Construct the URL by replacing placeholders
             $url = str_replace(
                 ['{season}', '{region}', '{group}', '{pool}'],
                 [$season, $region, $ageGroup, $pool],
                 $linkStructure
             );
 
-            $html = $this->scrape_results($url, $venue);
-            $response['success'] = true;
-            $response['data']['message'] = $html;
+            $matches = $this->scrape_results($url, $venue);
+            $total_matches = is_array($matches) ? count($matches) : 0;
+
+
+            if (isset($matches['error'])) {
+                $this->logger->update_log($log_id, 0, $matches['error']);
+                $response['data']['message'] = $matches['error'];
+            } else {
+                $this->logger->update_log($log_id, $total_matches);
+                $this->logger->complete_log($log_id);
+                $response['success'] = true;
+                $response['data']['message'] = $matches;
+            }
         } catch (Exception $e) {
             $response['data']['message'] = 'Error fetching data: ' . htmlspecialchars($e->getMessage());
         }
