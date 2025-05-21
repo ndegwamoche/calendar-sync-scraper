@@ -56,10 +56,91 @@ __webpack_require__.r(__webpack_exports__);
 const App = () => {
   const [activeTab, setActiveTab] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('main');
   const [isRunning, setIsRunning] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
-  const [log, setLog] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('');
+  const [progress, setProgress] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(0);
+  const [log, setLog] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
+    message: '',
+    matches: []
+  });
+  const [formData, setFormData] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
+    season: '',
+    linkStructure: 'https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#4,{season},{pool},{group},{region},,,,',
+    venue: ''
+  });
+  const [errors, setErrors] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({});
+  const seasons = window.calendarScraperAjax?.seasons || [];
+
+  // Validation function
+  const validateForm = () => {
+    const newErrors = {};
+
+    // Validate Season
+    if (!formData.season) {
+      newErrors.season = 'Please select a season.';
+    }
+
+    // Validate Link Structure
+    const linkStructureRegex = /^https:\/\/www\.bordtennisportalen\.dk\/DBTU\/HoldTurnering\/Stilling\/#4,\{season\},\{pool\},\{group\},\{region\},,,,$/;
+    if (!formData.linkStructure) {
+      newErrors.linkStructure = 'Link structure is required.';
+    } else if (!linkStructureRegex.test(formData.linkStructure)) {
+      newErrors.linkStructure = 'Link structure must match the expected format.';
+    }
+
+    // Validate Venue
+    if (!formData.venue.trim()) {
+      newErrors.venue = 'Venue name is required.';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Handle input changes
+  const handleInputChange = e => {
+    const {
+      name,
+      value
+    } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  // Simulate progress while scraping
+  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
+    let interval;
+    if (isRunning) {
+      setProgress(0);
+      interval = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 90) {
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 500);
+    }
+    return () => clearInterval(interval);
+  }, [isRunning]);
   const handleRunScraper = async () => {
+    if (!validateForm()) {
+      setLog({
+        message: 'Please fix the errors in the form.',
+        matches: []
+      });
+      return;
+    }
     setIsRunning(true);
-    setLog('Running scraper...');
+    setLog({
+      message: 'Running scraper...',
+      matches: []
+    });
     try {
       const response = await fetch(calendarScraperAjax.ajax_url, {
         method: 'POST',
@@ -68,17 +149,46 @@ const App = () => {
         },
         body: new URLSearchParams({
           action: 'run_calendar_scraper',
-          _ajax_nonce: calendarScraperAjax.nonce
+          _ajax_nonce: calendarScraperAjax.nonce,
+          season: formData.season,
+          link_structure: formData.linkStructure,
+          venue: formData.venue
         })
       });
       const data = await response.json();
       if (data.success) {
-        setLog(data.data.message);
+        if (data.data.error) {
+          setLog({
+            message: data.data.error,
+            matches: []
+          });
+          setProgress(0);
+        } else if (Array.isArray(data.data.message) && data.data.message.length === 0) {
+          setLog({
+            message: 'No matches found for venue ' + formData.venue,
+            matches: []
+          });
+          setProgress(100);
+        } else {
+          setLog({
+            message: '',
+            matches: data.data.message
+          });
+          setProgress(100);
+        }
       } else {
-        setLog(data.data?.message || 'Something went wrong.');
+        setLog({
+          message: data.data?.message || 'Something went wrong.',
+          matches: []
+        });
+        setProgress(0);
       }
     } catch (error) {
-      setLog('Error: ' + error.message);
+      setLog({
+        message: 'Error: ' + error.message,
+        matches: []
+      });
+      setProgress(0);
     } finally {
       setIsRunning(false);
     }
@@ -114,6 +224,14 @@ const App = () => {
             setActiveTab('log-state');
           },
           children: "Log State"
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("a", {
+          href: "#settings",
+          className: `nav-tab ${activeTab === 'settings' ? 'nav-tab-active' : ''}`,
+          onClick: e => {
+            e.preventDefault();
+            setActiveTab('settings');
+          },
+          children: "Settings"
         })]
       }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
         id: "tab-content",
@@ -132,39 +250,37 @@ const App = () => {
               }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("select", {
                 id: "season-select",
                 name: "season",
-                className: "form-select",
+                className: `form-select ${errors.season ? 'has-error' : ''}`,
+                value: formData.season,
+                onChange: handleInputChange,
                 children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
                   value: "",
                   children: "-- Select Season --"
-                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
-                  value: "2025",
-                  children: "2025"
-                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
-                  value: "2024",
-                  children: "2024"
-                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
-                  value: "2023",
-                  children: "2023"
-                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
-                  value: "2022-2024",
-                  children: "2022\u20132024"
-                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
-                  value: "2020-2024",
-                  children: "2020\u20132024"
-                })]
+                }), seasons.map(season => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
+                  value: season.season_value,
+                  children: season.season_name
+                }, season.season_value))]
+              }), errors.season && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("span", {
+                className: "error-message",
+                children: errors.season
               })]
             }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
               className: "form-section",
               children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("label", {
-                htmlFor: "venue",
+                htmlFor: "link-structure",
                 className: "form-label",
                 children: "Link Structure:"
               }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("input", {
                 type: "text",
                 id: "link-structure",
-                name: "link-structure",
-                className: "form-input",
+                name: "linkStructure",
+                className: `form-input ${errors.linkStructure ? 'has-error' : ''}`,
+                value: formData.linkStructure,
+                onChange: handleInputChange,
                 placeholder: "Enter link structure name"
+              }), errors.linkStructure && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("span", {
+                className: "error-message",
+                children: errors.linkStructure
               })]
             }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
               className: "form-section",
@@ -176,8 +292,13 @@ const App = () => {
                 type: "text",
                 id: "venue",
                 name: "venue",
-                className: "form-input",
+                className: `form-input ${errors.venue ? 'has-error' : ''}`,
+                value: formData.venue,
+                onChange: handleInputChange,
                 placeholder: "Enter venue name"
+              }), errors.venue && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("span", {
+                className: "error-message",
+                children: errors.venue
               })]
             }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("button", {
               type: "button",
@@ -189,16 +310,18 @@ const App = () => {
             }), isRunning && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
               id: "scraper-progress",
               children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("progress", {
-                value: "0",
+                value: progress,
                 max: "100"
               })
             }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
               id: "scraper-log",
-              style: {
-                marginTop: '1rem'
-              },
-              children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("pre", {
-                children: log
+              className: "scraper-log",
+              children: log.message ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("pre", {
+                children: log.message
+              }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("ul", {
+                children: log.matches.map((match, index) => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("li", {
+                  children: ["Match ", match.tid, ": ", match.hjemmehold, " vs ", match.udehold, " at ", match.spillested, " - ", match.resultat]
+                }, index))
               })
             })]
           })
@@ -207,6 +330,9 @@ const App = () => {
           className: "tab-section"
         }), activeTab === 'log-state' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
           id: "log-state",
+          className: "tab-section"
+        }), activeTab === 'settings' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
+          id: "settings",
           className: "tab-section"
         })]
       })]

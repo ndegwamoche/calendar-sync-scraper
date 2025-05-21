@@ -4,11 +4,20 @@ namespace Calendar_Sync_Scraper;
 
 class Admin_UI
 {
+    private $data_loader;
+    private $scraper;
 
     public function __construct()
     {
+        // Instantiate Data_Loader
+        $this->data_loader = new Data_Loader();
+
+        // Instantiate Scraper
+        $this->scraper = new Scraper();
+
         add_action('admin_menu', [$this, 'register_admin_page']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
+        add_action('wp_ajax_run_calendar_scraper', [$this, 'handle_run_scraper']);
     }
 
     public function register_admin_page()
@@ -44,16 +53,27 @@ class Admin_UI
             filemtime(CAL_SYNC_SCRAPER_PATH . 'build/index.css')
         );
 
+        // Fetch data using Data_Loader
+        $data = $this->data_loader->get_all_data();
+
         // Localize JS
         wp_localize_script('calendar-sync-scraper-js', 'calendarScraperAjax', [
             'ajax_url' => admin_url('admin-ajax.php'),
-            'nonce'    => wp_create_nonce('calendar_scraper_nonce')
+            'nonce'    => wp_create_nonce('calendar_scraper_nonce'),
+            'seasons' => $data['seasons'],
+            'regions' => $data['regions'],
+            'age_groups' => $data['age_groups'],
+            'tournament_levels' => $data['tournament_levels'],
         ]);
     }
 
+    public function handle_run_scraper()
+    {
+        $this->scraper->run_scraper();
+    }
 
     public function render_settings_page()
     {
-        echo '<div id="calendar-sync-scraper-root"></div>'; // Your React app renders here
+        echo '<div id="calendar-sync-scraper-root"></div>';
     }
 }
