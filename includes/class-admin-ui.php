@@ -19,7 +19,7 @@ class Admin_UI
             'manage_options',
             'calendar-sync-scraper',
             [$this, 'render_settings_page'],
-            'dashicons-calendar-alt'
+            'dashicons-controls-repeat'
         );
     }
 
@@ -27,6 +27,7 @@ class Admin_UI
     {
         if ($hook !== 'toplevel_page_calendar-sync-scraper') return;
 
+        // Enqueue JS
         wp_enqueue_script(
             'calendar-sync-scraper-js',
             CAL_SYNC_SCRAPER_URL . 'build/index.js',
@@ -35,14 +36,24 @@ class Admin_UI
             true
         );
 
+        // Enqueue CSS
+        wp_enqueue_style(
+            'calendar-sync-scraper-css',
+            CAL_SYNC_SCRAPER_URL . 'build/index.css',
+            [],
+            filemtime(CAL_SYNC_SCRAPER_PATH . 'build/index.css')
+        );
+
+        // Localize JS
         wp_localize_script('calendar-sync-scraper-js', 'calendarScraperAjax', [
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce'    => wp_create_nonce('calendar_scraper_nonce')
         ]);
     }
 
+
     public function render_settings_page()
     {
-        include CAL_SYNC_SCRAPER_PATH . 'templates/admin-ui.php';
+        echo '<div id="calendar-sync-scraper-root"></div>'; // Your React app renders here
     }
 }

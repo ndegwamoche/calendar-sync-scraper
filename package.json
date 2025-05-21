@@ -8,7 +8,7 @@
   },
   "author": "Martin Ndegwa Moche",
   "license": "ISC",
-  "description": "",
+  "description": "Scrapes calendar data from a specified URL and syncs it to Google Calendar. Supports automated scheduling and logs each run for tracking.",
   "dependencies": {
     "@wordpress/scripts": "^30.16.0"
   }
