@@ -6,6 +6,7 @@ class Admin_UI
 {
     private $data_loader;
     private $scraper;
+    private $logger;
 
     public function __construct()
     {
@@ -15,10 +16,14 @@ class Admin_UI
         // Instantiate Scraper
         $this->scraper = new Scraper();
 
+        // Instantiate Logger
+        $this->logger = new Logger();
+
         add_action('admin_menu', [$this, 'register_admin_page']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('wp_ajax_run_calendar_scraper', [$this, 'handle_run_scraper']);
         add_action('wp_ajax_get_tournament_options', [$this, 'get_tournament_options']);
+        add_action('wp_ajax_get_log_info', [$this, 'get_log_info']);
     }
 
     public function register_admin_page()
@@ -71,6 +76,12 @@ class Admin_UI
     public function handle_run_scraper()
     {
         $this->scraper->run_scraper();
+    }
+
+    public function get_log_info()
+    {
+        $logs = $this->logger->get_logs(20);
+        wp_send_json_success($logs);
     }
 
     public function get_tournament_options()

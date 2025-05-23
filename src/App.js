@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import Logs from './Logs';
+import Colors from './Colors';
+import Settings from './Settings';
 import './App.scss';
 
 const App = () => {
@@ -20,6 +23,8 @@ const App = () => {
     const seasons = window.calendarScraperAjax?.seasons || [];
     const regions = window.calendarScraperAjax?.regions || [];
     const ageGroups = window.calendarScraperAjax?.age_groups || [];
+    const levels = window.calendarScraperAjax?.tournament_levels || [];
+    const [logInfo, setLogInfo] = useState([]);
 
     // Validation function
     const validateForm = () => {
@@ -99,6 +104,52 @@ const App = () => {
         }
         return () => clearInterval(interval);
     }, [isRunning]);
+
+    // Fetch logInfo when the "Log State" tab is activated
+    useEffect(() => {
+        if (activeTab === 'log-state') {
+            const fetchLogInfo = async () => {
+                try {
+                    const response = await fetch(`${calendarScraperAjax.ajax_url}?action=get_log_info&_ajax_nonce=${calendarScraperAjax.nonce}`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+
+                        const formattedLogs = data.data.map(log => {
+
+                            const duration = log.close_datetime
+                                ? Math.floor((new Date(log.close_datetime) - new Date(log.start_datetime)) / 1000)
+                                : null;
+
+                            return {
+                                id: log.id,
+                                message: `Scraper run for season ${log.season_id}, status: ${log.status}, matches: ${log.total_matches}`,
+                                start_datetime: log.start_datetime,
+                                close_datetime: log.close_datetime,
+                                duration,
+                                status: log.status,
+                                details: log.error_message,
+                                total_matches: parseInt(log.total_matches, 10),
+                            };
+                        });
+                        setLogInfo(formattedLogs);
+                    } else {
+                        console.error('Failed to fetch log info:', data.data?.message || 'Unknown error');
+                        setLogInfo([]); // Clear logInfo on error
+                    }
+                } catch (error) {
+                    console.error('Error fetching log info:', error);
+                    setLogInfo([]); // Clear logInfo on error
+                }
+            };
+
+            fetchLogInfo();
+        }
+    }, [activeTab]);
 
     const handleRunScraper = async () => {
         if (!validateForm()) {
@@ -342,19 +393,19 @@ const App = () => {
 
                     {activeTab === 'sheet-colors' && (
                         <div id="sheet-colors" className="tab-section">
-                            {/* Add content for Sheet Colors tab */}
+                            <Colors levels={levels} />
                         </div>
                     )}
 
                     {activeTab === 'log-state' && (
                         <div id="log-state" className="tab-section">
-                            {/* Add content for Log State tab */}
+                            <Logs logInfo={logInfo} />
                         </div>
                     )}
 
                     {activeTab === 'settings' && (
                         <div id="settings" className="tab-section">
-                            {/* Add content for Log State tab */}
+                            <Settings />
                         </div>
                     )}
                 </div>

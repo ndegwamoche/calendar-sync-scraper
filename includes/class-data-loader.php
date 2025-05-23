@@ -51,16 +51,28 @@ class Data_Loader
     public function get_tournament_levels()
     {
         return $this->wpdb->get_results(
-            "SELECT level_name FROM {$this->tournament_levels_table}",
+            "SELECT
+                tl.id,
+                CONCAT(
+                    r.region_name,
+                    '->',
+                    ag.age_group_name,
+                    '->',
+                    level_name
+                )level_name
+            FROM
+                {$this->tournament_levels_table} tl
+            JOIN {$this->regions_table} r ON r.region_value = tl.region_id
+            JOIN {$this->age_groups_table} ag ON ag.age_group_value = tl.age_group_id",
             ARRAY_A
         ) ?: [];
     }
 
     public function get_tournament_pools()
     {
-        $season = sanitize_text_field($_GET['season']);
-        $region = sanitize_text_field($_GET['region']);
-        $age_group = sanitize_text_field($_GET['age_group']);
+        $season = isset($_GET['season']) ? sanitize_text_field($_GET['season']) : '';
+        $region = isset($_GET['region']) ? sanitize_text_field($_GET['region']) : '';
+        $age_group = isset($_GET['age_group']) ? sanitize_text_field($_GET['age_group']) : '';
 
         return $this->wpdb->get_results(
             $this->wpdb->prepare(

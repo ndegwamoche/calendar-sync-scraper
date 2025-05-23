@@ -23,6 +23,25 @@ class Scraper
 
     public function run_scraper()
     {
+        // Register a shutdown handler to catch fatal errors
+        register_shutdown_function(function () use (&$log_id) {
+            $error = error_get_last();
+            if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+                $message = 'Fatal error: ' . $error['message'];
+
+                if (isset($log_id)) {
+                    $logger = new \Calendar_Sync_Scraper\Logger();
+                    $logger->update_log($log_id, 0, $message);
+                }
+
+                if (!headers_sent()) {
+                    header('Content-Type: application/json');
+                }
+                echo json_encode(['success' => false, 'data' => ['message' => $message]]);
+                exit;
+            }
+        });
+
         check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
 
         $response = ['success' => false, 'data' => ['message' => '']];
@@ -47,18 +66,24 @@ class Scraper
             $matches = $this->scrape_results($url, $venue);
             $total_matches = is_array($matches) ? count($matches) : 0;
 
-
             if (isset($matches['error'])) {
                 $this->logger->update_log($log_id, 0, $matches['error']);
                 $response['data']['message'] = $matches['error'];
             } else {
-                $this->logger->update_log($log_id, $total_matches);
+                if ($total_matches == 0) {
+                    $error_message = 'No matches found for venue ' . $venue;
+                } else {
+                    $error_message =  json_encode($matches, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                }
+
+                $this->logger->update_log($log_id, $total_matches, $error_message);
                 $this->logger->complete_log($log_id);
                 $response['success'] = true;
                 $response['data']['message'] = $matches;
             }
         } catch (Exception $e) {
             $response['data']['message'] = 'Error fetching data: ' . htmlspecialchars($e->getMessage());
+            $this->logger->log('error', htmlspecialchars($e->getMesssage()));
         }
 
         wp_send_json($response);
@@ -76,9 +101,18 @@ class Scraper
     {
         try {
             // Set up ChromeDriver connection
-            $serverUrl = 'http://localhost:61428';
+            $serverUrl = 'http://localhost:62447';
+
             $capabilities = DesiredCapabilities::chrome();
-            $capabilities->setCapability('goog:chromeOptions', ['args' => ['--headless', '--disable-gpu']]);
+            $capabilities->setCapability('goog:chromeOptions', [
+                'args' => [
+                    '--headless',
+                    '--disable-gpu',
+                    '--no-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--user-data-dir=' . '/tmp/chrome-profile-' . uniqid(),
+                ]
+            ]);
 
             // Start ChromeDriver
             $driver = RemoteWebDriver::create($serverUrl, $capabilities);
@@ -135,7 +169,11 @@ class Scraper
 
             return $matches;
         } catch (Exception $e) {
-            return ['error' => 'Error fetching data: ' . htmlspecialchars($e->getMessage())];
+            $errorMessage = 'Error fetching data: ' . htmlspecialchars($e->getMessage());
+
+            $this->logger->log('error', $errorMessage);
+
+            return ['error' => $errorMessage];
         }
     }
 }

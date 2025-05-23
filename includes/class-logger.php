@@ -65,10 +65,20 @@ class Logger
         );
     }
 
+    /**
+     * Fetch logs from the database
+     *
+     * @param int $limit Number of logs to fetch
+     * @return array Array of log objects
+     */
     public function get_logs($limit = 20)
     {
         global $wpdb;
-        $table = $wpdb->prefix . 'cal_sync_logs'; // Corrected table name
-        return $wpdb->get_results("SELECT * FROM $table ORDER BY start_datetime DESC LIMIT $limit", OBJECT);
+        $table = $wpdb->prefix . 'cal_sync_logs';
+
+        return $wpdb->get_results(
+            $wpdb->prepare("SELECT * FROM $table ORDER BY start_datetime DESC LIMIT %d", $limit),
+            OBJECT
+        );
     }
 }

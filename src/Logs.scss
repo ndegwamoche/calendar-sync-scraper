@@ -1,0 +1,141 @@
+.log-viewer {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 0px;
+  box-sizing: border-box;
+}
+
+.log-table {
+  width: 100%;
+  max-width: 1200px; /* Constrain table width */
+  border-collapse: collapse;
+  font-size: 14px;
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  table-layout: fixed; /* Ensure consistent column widths */
+}
+
+.log-table th,
+.log-table td {
+  padding: 10px;
+  border: 1px solid #ddd;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Set specific column widths to prevent expansion */
+.log-table th:nth-child(1),
+.log-table td:nth-child(1) {
+  width: 90px; /* Status */
+}
+.log-table th:nth-child(2),
+.log-table td:nth-child(2) {
+  width: 130px; /* Start Datetime */
+}
+.log-table th:nth-child(3),
+.log-table td:nth-child(3) {
+  width: 130px; /* End Datetime */
+}
+.log-table th:nth-child(4),
+.log-table td:nth-child(4) {
+  width: 50px; /* Duration */
+}
+.log-table th:nth-child(5),
+.log-table td:nth-child(5) {
+  width: 70px; /* Records */
+}
+.log-table th:nth-child(6),
+.log-table td:nth-child(6) {
+  width: 200px; /* Details */
+}
+
+.log-table th {
+  background-color: #f4f4f4;
+  font-weight: bold;
+}
+
+.log-row {
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &.completed {
+    background-color: #e6ffe6;
+  }
+
+  &.failed {
+    background-color: #ffe6e6;
+  }
+
+  &.expanded {
+    background-color: #f0f0f0;
+    /* Remove any properties that increase row size */
+  }
+
+  &:hover {
+    background-color: #f9f9f9;
+  }
+}
+
+.log-details {
+  background-color: #fafafa;
+
+  pre {
+    margin: 10px;
+    padding: 10px;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-size: 12px;
+    white-space: pre-wrap; /* Allow wrapping for long text */
+    word-break: break-word; /* Break long words */
+  }
+
+  .match-list {
+    margin: 10px;
+    padding: 0;
+    list-style: none;
+    max-height: 200px;
+    overflow-y: auto;
+
+    li {
+      padding: 5px 0;
+      border-bottom: 1px solid #eee;
+      white-space: normal; /* Allow wrapping */
+    }
+  }
+}
+
+.loader {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  font-size: 16px;
+  color: #555;
+
+  &::before {
+    content: "";
+    width: 24px;
+    height: 24px;
+    border: 3px solid #ccc;
+    border-top: 3px solid #0073aa;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 10px;
+  }
+}
+
+/* Ensure the table stays within the viewer */
+.log-viewer::-webkit-scrollbar {
+  height: 8px;
+}
+.log-viewer::-webkit-scrollbar-thumb {
+  background-color: #888;
+  border-radius: 4px;
+}
+.log-viewer::-webkit-scrollbar-track {
+  background-color: #f1f1f1;
+}

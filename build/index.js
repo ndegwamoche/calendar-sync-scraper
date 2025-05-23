@@ -47,9 +47,15 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "react");
 /* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var _App_scss__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./App.scss */ "./src/App.scss");
-/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! react/jsx-runtime */ "react/jsx-runtime");
-/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__);
+/* harmony import */ var _Logs__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./Logs */ "./src/Logs.js");
+/* harmony import */ var _Colors__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./Colors */ "./src/Colors.js");
+/* harmony import */ var _Settings__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./Settings */ "./src/Settings.js");
+/* harmony import */ var _App_scss__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./App.scss */ "./src/App.scss");
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! react/jsx-runtime */ "react/jsx-runtime");
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5___default = /*#__PURE__*/__webpack_require__.n(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__);
+
+
+
 
 
 
@@ -77,6 +83,8 @@ const App = () => {
   const seasons = window.calendarScraperAjax?.seasons || [];
   const regions = window.calendarScraperAjax?.regions || [];
   const ageGroups = window.calendarScraperAjax?.age_groups || [];
+  const levels = window.calendarScraperAjax?.tournament_levels || [];
+  const [logInfo, setLogInfo] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
 
   // Validation function
   const validateForm = () => {
@@ -155,6 +163,46 @@ const App = () => {
     }
     return () => clearInterval(interval);
   }, [isRunning]);
+
+  // Fetch logInfo when the "Log State" tab is activated
+  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
+    if (activeTab === 'log-state') {
+      const fetchLogInfo = async () => {
+        try {
+          const response = await fetch(`${calendarScraperAjax.ajax_url}?action=get_log_info&_ajax_nonce=${calendarScraperAjax.nonce}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded'
+            }
+          });
+          const data = await response.json();
+          if (data.success) {
+            const formattedLogs = data.data.map(log => {
+              const duration = log.close_datetime ? Math.floor((new Date(log.close_datetime) - new Date(log.start_datetime)) / 1000) : null;
+              return {
+                id: log.id,
+                message: `Scraper run for season ${log.season_id}, status: ${log.status}, matches: ${log.total_matches}`,
+                start_datetime: log.start_datetime,
+                close_datetime: log.close_datetime,
+                duration,
+                status: log.status,
+                details: log.error_message,
+                total_matches: parseInt(log.total_matches, 10)
+              };
+            });
+            setLogInfo(formattedLogs);
+          } else {
+            console.error('Failed to fetch log info:', data.data?.message || 'Unknown error');
+            setLogInfo([]); // Clear logInfo on error
+          }
+        } catch (error) {
+          console.error('Error fetching log info:', error);
+          setLogInfo([]); // Clear logInfo on error
+        }
+      };
+      fetchLogInfo();
+    }
+  }, [activeTab]);
   const handleRunScraper = async () => {
     if (!validateForm()) {
       setLog({
@@ -223,14 +271,14 @@ const App = () => {
       setIsRunning(false);
     }
   };
-  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
+  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsxs)("div", {
     className: "wrap",
-    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("h1", {
+    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("h1", {
       children: "Calendar Sync Scraper"
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
-      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("h2", {
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsxs)("div", {
+      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsxs)("h2", {
         className: "nav-tab-wrapper",
-        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("a", {
+        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("a", {
           href: "#main",
           className: `nav-tab ${activeTab === 'main' ? 'nav-tab-active' : ''}`,
           onClick: e => {
@@ -238,7 +286,7 @@ const App = () => {
             setActiveTab('main');
           },
           children: "Main"
-        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("a", {
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("a", {
           href: "#sheet-colors",
           className: `nav-tab ${activeTab === 'sheet-colors' ? 'nav-tab-active' : ''}`,
           onClick: e => {
@@ -246,7 +294,7 @@ const App = () => {
             setActiveTab('sheet-colors');
           },
           children: "Sheet Colors"
-        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("a", {
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("a", {
           href: "#log-state",
           className: `nav-tab ${activeTab === 'log-state' ? 'nav-tab-active' : ''}`,
           onClick: e => {
@@ -254,7 +302,7 @@ const App = () => {
             setActiveTab('log-state');
           },
           children: "Log State"
-        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("a", {
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("a", {
           href: "#settings",
           className: `nav-tab ${activeTab === 'settings' ? 'nav-tab-active' : ''}`,
           onClick: e => {
@@ -263,40 +311,40 @@ const App = () => {
           },
           children: "Settings"
         })]
-      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsxs)("div", {
         id: "tab-content",
-        children: [activeTab === 'main' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
+        children: [activeTab === 'main' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("div", {
           id: "main",
           className: "tab-section active",
-          children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("form", {
+          children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsxs)("form", {
             id: "calendar-scraper-form",
             onSubmit: e => e.preventDefault(),
-            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
+            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsxs)("div", {
               className: "form-section",
-              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsxs)("div", {
                 className: "form-control-group",
-                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("label", {
+                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("label", {
                   htmlFor: "season-select",
                   className: "form-label",
                   children: "Select Season:"
-                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("select", {
+                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsxs)("select", {
                   id: "season-select",
                   name: "season",
                   className: `form-select ${errors.season ? 'has-error' : ''}`,
                   value: formData.season,
                   onChange: handleInputChange,
-                  children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
+                  children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("option", {
                     value: "",
                     children: "-- Select Season --"
-                  }), seasons.map(season => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
+                  }), seasons.map(season => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("option", {
                     value: season.season_value,
                     children: season.season_name
                   }, season.season_value))]
                 })]
-              }), errors.season && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("span", {
+              }), errors.season && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("span", {
                 className: "error-message",
                 children: errors.season
-              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("a", {
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("a", {
                 href: "#",
                 className: "advanced-link",
                 onClick: e => {
@@ -305,60 +353,60 @@ const App = () => {
                 },
                 children: "Advanced Settings"
               })]
-            }), showDropdowns && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
+            }), showDropdowns && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsxs)("div", {
               className: "form-section dropdown-row",
-              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("label", {
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("label", {
                 htmlFor: "region-select",
                 className: "form-label"
-              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("select", {
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsxs)("select", {
                 id: "region-select",
                 name: "region",
                 className: `form-select ${errors.region ? 'has-error' : ''}`,
                 value: formData.region,
                 onChange: handleInputChange,
-                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
+                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("option", {
                   value: "",
                   children: "-- Select Region --"
-                }), regions.map(region => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
+                }), regions.map(region => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("option", {
                   value: region.region_value,
                   children: region.region_name
                 }, region.region_value))]
-              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("select", {
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsxs)("select", {
                 id: "age-group-select",
                 name: "ageGroup",
                 className: `form-select ${errors.ageGroup ? 'has-error' : ''}`,
                 value: formData.ageGroup,
                 onChange: handleInputChange,
-                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
+                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("option", {
                   value: "",
                   children: "-- Select Age Group --"
-                }), ageGroups.map(ageGroup => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
+                }), ageGroups.map(ageGroup => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("option", {
                   value: ageGroup.age_group_value,
                   children: ageGroup.age_group_name
                 }, ageGroup.age_group_value))]
-              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("select", {
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsxs)("select", {
                 id: "pool-select",
                 name: "pool",
                 className: `form-select ${errors.pool ? 'has-error' : ''}`,
                 value: formData.pool,
                 onChange: handleInputChange,
-                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
+                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("option", {
                   value: "",
                   children: "-- Select Pool --"
-                }), pools.map(pool => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("option", {
+                }), pools.map(pool => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsxs)("option", {
                   value: pool.pool_value,
                   children: [pool.tournament_level, " - ", pool.pool_name]
                 }, pool.pool_value))]
               })]
-            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsxs)("div", {
               className: "form-section",
-              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsxs)("div", {
                 className: "form-control-group",
-                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("label", {
+                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("label", {
                   htmlFor: "link-structure",
                   className: "form-label",
                   children: "Link Structure:"
-                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("input", {
+                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("input", {
                   type: "text",
                   id: "link-structure",
                   name: "linkStructure",
@@ -367,19 +415,19 @@ const App = () => {
                   onChange: handleInputChange,
                   placeholder: "Enter link structure name"
                 })]
-              }), errors.linkStructure && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("span", {
+              }), errors.linkStructure && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("span", {
                 className: "error-message",
                 children: errors.linkStructure
               })]
-            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsxs)("div", {
               className: "form-section",
-              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsxs)("div", {
                 className: "form-control-group",
-                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("label", {
+                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("label", {
                   htmlFor: "venue",
                   className: "form-label",
                   children: "Venue:"
-                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("input", {
+                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("input", {
                   type: "text",
                   id: "venue",
                   name: "venue",
@@ -388,44 +436,51 @@ const App = () => {
                   onChange: handleInputChange,
                   placeholder: "Enter venue name"
                 })]
-              }), errors.venue && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("span", {
+              }), errors.venue && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("span", {
                 className: "error-message",
                 children: errors.venue
               })]
-            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("button", {
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("button", {
               type: "button",
               id: "run-scraper-now",
               className: "button button-primary",
               onClick: handleRunScraper,
               disabled: isRunning,
               children: isRunning ? 'Running...' : 'Run Scraper Now'
-            }), isRunning && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
+            }), isRunning && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("div", {
               id: "scraper-progress",
-              children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("progress", {
+              children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("progress", {
                 value: progress,
                 max: "100"
               })
-            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("div", {
               id: "scraper-log",
               className: "scraper-log",
-              children: log.message ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("pre", {
+              children: log.message ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("pre", {
                 children: log.message
-              }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("ul", {
-                children: log.matches.map((match, index) => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("li", {
+              }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("ul", {
+                children: log.matches.map((match, index) => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsxs)("li", {
                   children: ["Match ", match.tid, ": ", match.hjemmehold, " vs ", match.udehold, " at ", match.spillested, " - ", match.resultat]
                 }, index))
               })
             })]
           })
-        }), activeTab === 'sheet-colors' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
+        }), activeTab === 'sheet-colors' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("div", {
           id: "sheet-colors",
-          className: "tab-section"
-        }), activeTab === 'log-state' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
+          className: "tab-section",
+          children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)(_Colors__WEBPACK_IMPORTED_MODULE_2__["default"], {
+            levels: levels
+          })
+        }), activeTab === 'log-state' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("div", {
           id: "log-state",
-          className: "tab-section"
-        }), activeTab === 'settings' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
+          className: "tab-section",
+          children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)(_Logs__WEBPACK_IMPORTED_MODULE_1__["default"], {
+            logInfo: logInfo
+          })
+        }), activeTab === 'settings' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)("div", {
           id: "settings",
-          className: "tab-section"
+          className: "tab-section",
+          children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_5__.jsx)(_Settings__WEBPACK_IMPORTED_MODULE_3__["default"], {})
         })]
       })]
     })]
@@ -444,6 +499,393 @@ const App = () => {
 __webpack_require__.r(__webpack_exports__);
 // extracted by mini-css-extract-plugin
 
+
+/***/ }),
+
+/***/ "./src/Colors.js":
+/*!***********************!*\
+  !*** ./src/Colors.js ***!
+  \***********************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "react");
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _Colors_scss__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./Colors.scss */ "./src/Colors.scss");
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! react/jsx-runtime */ "react/jsx-runtime");
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__);
+
+
+
+const Colors = ({
+  levels
+}) => {
+  // Predefined colors (10 colors)
+  const availableColors = ['#FF0000',
+  // Red
+  '#00FF00',
+  // Green
+  '#0000FF',
+  // Blue
+  '#FFFF00',
+  // Yellow
+  '#FF00FF',
+  // Magenta
+  '#00FFFF',
+  // Cyan
+  '#FFA500',
+  // Orange
+  '#800080',
+  // Purple
+  '#008000',
+  // Dark Green
+  '#FFC0CB' // Pink
+  ];
+  const [poolColors, setPoolColors] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({});
+  const [poolFilter, setPoolFilter] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('');
+  const [selectedPool, setSelectedPool] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('');
+
+  // Filter pools based on search input
+  const filteredPools = levels.filter(pool => !poolColors[pool.pool_value] && (poolFilter === '' || pool.level_name.toLowerCase().includes(poolFilter.toLowerCase()) || pool.tournament_level.toLowerCase().includes(poolFilter.toLowerCase())));
+
+  // Handle color assignment
+  const handleAssignColor = async (poolId, color) => {
+    try {
+      const response = await fetch(calendarScraperAjax.ajax_url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          action: 'save_pool_color',
+          _ajax_nonce: calendarScraperAjax.nonce,
+          pool_id: poolId,
+          color
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setPoolColors(prev => ({
+          ...prev,
+          [poolId]: color
+        }));
+        setSelectedPool(''); // Reset dropdown
+      } else {
+        console.error('Failed to save pool color:', data.data?.message || 'Unknown error');
+      }
+    } catch (error) {
+      console.error('Error saving pool color:', error);
+    }
+  };
+
+  // Handle clear colors with confirmation
+  const handleClearColors = async () => {
+    // if (window.confirm('Are you sure you want to clear all pool color assignments?')) {
+    //     try {
+    //         const response = await fetch(calendarScraperAjax.ajax_url, {
+    //             method: 'POST',
+    //             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    //             body: new URLSearchParams({
+    //                 action: 'clear_pool_colors',
+    //                 _ajax_nonce: calendarScraperAjax.nonce,
+    //             }),
+    //         });
+    //         const data = await response.json();
+    //         if (data.success) {
+    //             setPoolColors({});
+    //             setSelectedPool('');
+    //         } else {
+    //             console.error('Failed to clear pool colors:', data.data?.message || 'Unknown error');
+    //         }
+    //     } catch (error) {
+    //         console.error('Error clearing pool colors:', error);
+    //     }
+    // }
+  };
+  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
+    id: "sheet-colors",
+    className: "tab-section",
+    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
+      className: "form-section",
+      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("label", {
+        htmlFor: "pool-select-color",
+        className: "form-label",
+        children: "Select Tournament Level:"
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("select", {
+        id: "pool-select-color",
+        className: "form-select",
+        value: selectedPool,
+        onChange: e => setSelectedPool(e.target.value),
+        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
+          value: "",
+          children: "-- Select Pool --"
+        }), filteredPools.map(pool => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("option", {
+          value: pool.id,
+          children: pool.level_name
+        }, pool.id))]
+      })]
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
+      className: "form-section",
+      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("h4", {
+        children: "Available Colors:"
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
+        className: "color-swatches",
+        children: availableColors.map(color => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
+          className: `color-swatch ${selectedPool ? 'clickable' : 'disabled'}`,
+          style: {
+            backgroundColor: color
+          },
+          title: color,
+          onClick: () => {
+            if (selectedPool) {
+              handleAssignColor(selectedPool, color);
+            }
+          }
+        }, color))
+      })]
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
+      className: "form-section",
+      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("h4", {
+        children: "Assigned Colors:"
+      }), Object.keys(poolColors).length === 0 ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("p", {
+        children: "No colors assigned."
+      }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("ul", {
+        children: Object.entries(poolColors).map(([poolId, color]) => {
+          const pool = pools.find(p => p.pool_value === poolId);
+          return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("li", {
+            children: [pool ? `${pool.tournament_level} - ${pool.pool_name}` : poolId, ":", ' ', /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("span", {
+              className: "color-swatch",
+              style: {
+                backgroundColor: color
+              }
+            }), ' ', color]
+          }, poolId);
+        })
+      })]
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("button", {
+      type: "button",
+      className: "button button-secondary",
+      onClick: handleClearColors,
+      children: "Clear All Colors"
+    })]
+  });
+};
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (Colors);
+
+/***/ }),
+
+/***/ "./src/Colors.scss":
+/*!*************************!*\
+  !*** ./src/Colors.scss ***!
+  \*************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+// extracted by mini-css-extract-plugin
+
+
+/***/ }),
+
+/***/ "./src/Logs.js":
+/*!*********************!*\
+  !*** ./src/Logs.js ***!
+  \*********************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "react");
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _Logs_scss__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./Logs.scss */ "./src/Logs.scss");
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! react/jsx-runtime */ "react/jsx-runtime");
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__);
+
+
+
+const Logs = ({
+  logInfo
+}) => {
+  const [expandedRows, setExpandedRows] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({});
+
+  // Toggle expand/collapse for a row
+  const toggleExpand = id => {
+    setExpandedRows(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+
+  // Truncate text to a specified length
+  const truncateText = (text, maxLength = 20) => {
+    if (!text) return '';
+    return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
+  };
+
+  // Parse details if it's JSON (e.g., match data)
+  const parseDetails = details => {
+    if (!details || !details.startsWith('[')) {
+      return {
+        isJson: false,
+        content: details
+      };
+    }
+    try {
+      const parsed = JSON.parse(details);
+      if (Array.isArray(parsed)) {
+        return {
+          isJson: true,
+          matches: parsed,
+          summary: `Found ${parsed.length} matches`
+        };
+      }
+      return {
+        isJson: false,
+        content: details
+      };
+    } catch (e) {
+      console.error('Failed to parse details as JSON:', e);
+      return {
+        isJson: false,
+        content: details
+      };
+    }
+  };
+  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
+    className: "log-viewer",
+    children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("table", {
+      className: "log-table",
+      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("thead", {
+        children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("tr", {
+          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("th", {
+            children: "Status"
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("th", {
+            children: "Start Datetime"
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("th", {
+            children: "End Datetime"
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("th", {
+            children: "Dur (s)"
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("th", {
+            children: "Records"
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("th", {
+            children: "Details"
+          })]
+        })
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("tbody", {
+        children: logInfo.length === 0 ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("tr", {
+          children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
+            colSpan: "6",
+            children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
+              className: "loader",
+              children: "Loading..."
+            })
+          })
+        }) : logInfo.map((log, index) => {
+          const detailsData = parseDetails(log.details);
+          const isExpanded = expandedRows[log.id || index];
+          return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)((react__WEBPACK_IMPORTED_MODULE_0___default().Fragment), {
+            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("tr", {
+              className: `log-row ${log.status} ${isExpanded ? 'expanded' : ''}`,
+              onClick: () => toggleExpand(log.id || index),
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
+                children: log.status === 'completed' ? '✅ Completed' : '❌ Failed'
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
+                children: log.start_datetime
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
+                children: log.close_datetime || 'N/A'
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
+                children: log.duration !== null ? log.duration : 'N/A'
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
+                children: log.total_matches
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
+                children: detailsData.isJson ? truncateText(detailsData.summary, 20) : truncateText(detailsData.content, 20)
+              })]
+            }), isExpanded && detailsData.isJson && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("tr", {
+              className: "log-details",
+              children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
+                colSpan: "6",
+                children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("ul", {
+                  className: "match-list",
+                  children: detailsData.matches.map((match, matchIndex) => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("li", {
+                    children: ["Match ", match.tid, ": ", match.hjemmehold, " vs ", match.udehold, " at ", match.spillested, " - ", match.resultat]
+                  }, matchIndex))
+                })
+              })
+            }), isExpanded && !detailsData.isJson && detailsData.content && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("tr", {
+              className: "log-details",
+              children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
+                colSpan: "6",
+                children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("pre", {
+                  children: detailsData.content
+                })
+              })
+            })]
+          }, log.id || index);
+        })
+      })]
+    })
+  });
+};
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (Logs);
+
+/***/ }),
+
+/***/ "./src/Logs.scss":
+/*!***********************!*\
+  !*** ./src/Logs.scss ***!
+  \***********************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+// extracted by mini-css-extract-plugin
+
+
+/***/ }),
+
+/***/ "./src/Settings.js":
+/*!*************************!*\
+  !*** ./src/Settings.js ***!
+  \*************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "react");
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! react/jsx-runtime */ "react/jsx-runtime");
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__);
+
+
+const Settings = () => {
+  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
+    id: "settings",
+    className: "tab-section",
+    children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
+      className: "form-section",
+      children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+        className: "form-control-group",
+        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("label", {
+          htmlFor: "pool-select-color",
+          className: "form-label",
+          children: "API Key:"
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("input", {
+          type: "text",
+          id: "link-structure",
+          name: "linkStructure",
+          className: `form-input`,
+          placeholder: "Google calender API key"
+        })]
+      })
+    })
+  });
+};
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (Settings);
 
 /***/ }),
 
