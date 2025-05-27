@@ -19,6 +19,7 @@ require_once CAL_SYNC_SCRAPER_PATH . 'includes/class-logger.php';
 require_once CAL_SYNC_SCRAPER_PATH . 'includes/class-scheduler.php';
 require_once CAL_SYNC_SCRAPER_PATH . 'includes/class-db-init.php';
 require_once CAL_SYNC_SCRAPER_PATH . 'includes/class-data-loader.php';
+require_once CAL_SYNC_SCRAPER_PATH . 'includes/class-google-calendar.php';
 
 // Instantiate DB_Init
 $db_init = new Calendar_Sync_Scraper\DB_Init();

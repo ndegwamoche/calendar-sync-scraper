@@ -99,6 +99,9 @@ class Scraper
                 $log_data['messages'][] = "Pool $tournament_level - $pool_name ($pool): Found $total_matches matches";
                 $response['success'] = true;
                 $response['data']['message'] = $matches;
+
+                $google_calendar_sync = new Google_Calendar_Sync();
+                $google_calendar_sync->insertMatches($matches);
             }
 
             // Update log in database

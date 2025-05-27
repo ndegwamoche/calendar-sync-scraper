@@ -46,6 +46,10 @@
     margin-top: -1px;
     border: 1px solid #ddd;
     border-radius: 0 0 5px 5px;
+
+    h3 {
+      font-size: 14px !important;
+    }
   }
 
   // Button styles
@@ -251,4 +255,15 @@
   .has-error {
     border-color: #dc3545;
   }
+}
+
+.settings-message {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 4px;
+  background-color: #f2dede;
+}
+.success-message {
+  background-color: #dff0d8;
+  color: #3c763d;
 }

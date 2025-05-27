@@ -7,6 +7,7 @@ class Admin_UI
     private $data_loader;
     private $scraper;
     private $logger;
+    private $google_calendar;
 
     public function __construct()
     {
@@ -19,6 +20,9 @@ class Admin_UI
         // Instantiate Logger
         $this->logger = new Logger();
 
+        //Instantiate Google Calendar Sync
+        $this->google_calendar = new Google_Calendar_Sync();
+
         add_action('admin_menu', [$this, 'register_admin_page']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('wp_ajax_run_calendar_scraper', [$this, 'handle_run_scraper']);
@@ -29,6 +33,8 @@ class Admin_UI
         add_action('wp_ajax_remove_level_color', [$this->data_loader, 'remove_level_color']);
         add_action('wp_ajax_clear_level_colors', [$this->data_loader, 'clear_level_colors']);
         add_action('wp_ajax_get_google_colors', [$this->data_loader, 'get_google_colors']);
+        add_action('wp_ajax_save_google_credentials', [$this->google_calendar, 'save_google_credentials']);
+        add_action('wp_ajax_get_google_credentials', [$this->google_calendar, 'get_google_credentials']);
     }
 
     public function register_admin_page()

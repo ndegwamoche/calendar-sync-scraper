@@ -17,7 +17,6 @@ class Data_Loader
         global $wpdb;
         $this->wpdb = $wpdb;
 
-        // Define table names with WordPress prefix
         $this->seasons_table = $wpdb->prefix . 'cal_sync_seasons';
         $this->regions_table = $wpdb->prefix . 'cal_sync_regions';
         $this->age_groups_table = $wpdb->prefix . 'cal_sync_age_groups';

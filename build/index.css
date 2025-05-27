@@ -320,6 +320,9 @@
   border: 1px solid #ddd;
   border-radius: 0 0 5px 5px;
 }
+.wrap .tab-section h3 {
+  font-size: 14px !important;
+}
 .wrap .button-primary {
   padding: 10px 20px;
   font-size: 14px;
@@ -500,6 +503,18 @@
 }
 .dropdown-row .has-error {
   border-color: #dc3545;
+}
+
+.settings-message {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 4px;
+  background-color: #f2dede;
+}
+
+.success-message {
+  background-color: #dff0d8;
+  color: #3c763d;
 }
 
 /*# sourceMappingURL=index.css.map*/

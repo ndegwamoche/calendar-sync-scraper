@@ -5,7 +5,8 @@
         "php": ">=7.4",
         "php-webdriver/webdriver": "^1.14",
         "symfony/dom-crawler": "^6.0",
-        "symfony/css-selector": "^6.0"
+        "symfony/css-selector": "^6.0",
+        "google/apiclient": "^2.15"
     },
     "autoload": {
         "psr-4": {
