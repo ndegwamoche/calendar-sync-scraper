@@ -10,6 +10,7 @@ class Data_Loader
     private $age_groups_table;
     private $tournament_levels_table;
     private $tournament_pools_table;
+    private $colors_table;
 
     public function __construct()
     {
@@ -22,6 +23,7 @@ class Data_Loader
         $this->age_groups_table = $wpdb->prefix . 'cal_sync_age_groups';
         $this->tournament_levels_table = $wpdb->prefix . 'cal_sync_tournament_levels';
         $this->tournament_pools_table = $wpdb->prefix . 'cal_sync_tournament_pools';
+        $this->colors_table = $wpdb->prefix . 'cal_sync_colors';
     }
 
     public function get_seasons()
@@ -103,5 +105,118 @@ class Data_Loader
             'tournament_levels' => $this->get_tournament_levels(),
             'tournament_pools' => $this->get_tournament_pools(),
         ];
+    }
+
+    public function save_level_color()
+    {
+        $level_id = sanitize_text_field($_POST['level_id']);
+        $color = sanitize_hex_color($_POST['color']);
+
+        if (!isset($level_id) || !isset($color)) {
+            wp_send_json_error(['message' => 'Invalid request']);
+            return;
+        }
+
+        if (!$color) {
+            wp_send_json_error(['message' => 'Invalid color']);
+            return;
+        }
+
+        $existing = $this->wpdb->get_var(
+            $this->wpdb->prepare("SELECT COUNT(*) FROM $this->tournament_levels_table WHERE id = %d", $level_id)
+        );
+
+        if ($existing > 0) {
+            $result = $this->wpdb->update(
+                $this->tournament_levels_table,
+                ['color' => $color],
+                ['id' => $level_id],
+                ['%s'],
+                ['%d']
+            );
+        }
+
+        if ($result === false) {
+            wp_send_json_error(['message' => 'Failed to save color for level ID: ' . $level_id]);
+        } else {
+            wp_send_json_success(['message' => 'Color saved successfully']);
+        }
+    }
+
+    public function get_level_colors()
+    {
+        $results = $this->wpdb->get_results(
+            "SELECT id, color FROM {$this->tournament_levels_table} WHERE color IS NOT NULL AND color != ''",
+            ARRAY_A
+        );
+
+        $colors = [];
+        foreach ($results as $row) {
+            $colors[$row['id']] = $row['color'];
+        }
+
+        wp_send_json_success($colors);
+    }
+
+    public function remove_level_color()
+    {
+        $level_id = isset($_POST['level_id']) ? intval($_POST['level_id']) : 0;
+
+        $level_id = intval($level_id);
+
+        if ($level_id <= 0) {
+            throw new Exception('Invalid level ID.');
+        }
+
+        $existing = $this->wpdb->get_var(
+            $this->wpdb->prepare("SELECT COUNT(*) FROM $this->tournament_levels_table WHERE id = %d", $level_id)
+        );
+
+        if ($existing > 0) {
+            $result = $this->wpdb->update(
+                $this->tournament_levels_table,
+                ['color' => null],
+                ['id' => $level_id],
+                ['%s'],
+                ['%d']
+            );
+        }
+
+        if ($result === false) {
+            wp_send_json_error(['message' => 'Failed to remove color for level ID: ' . $level_id]);
+        } else {
+            wp_send_json_success(['message' => 'Color removed successfully']);
+        }
+    }
+
+    public function get_google_colors()
+    {
+
+
+        $results = $this->wpdb->get_results(
+            "SELECT id, color_name, hex_code, google_color_id FROM {$this->colors_table} ORDER BY id ASC",
+            ARRAY_A
+        );
+
+        $colors = [];
+        foreach ($results as $row) {
+            $colors[$row['id']] = [
+                'color_name' => $row['color_name'],
+                'hex_code' => $row['hex_code'],
+                'google_id' => $row['google_color_id'],
+            ];
+        }
+
+        wp_send_json_success($colors);
+    }
+
+    public function clear_level_colors()
+    {
+        $result = $this->wpdb->query("UPDATE {$this->tournament_levels_table} SET color = NULL");
+        if ($result) {
+            wp_send_json_success(['message' => 'All colors cleared successfully']);
+        } else {
+            wp_send_json_error(['message' => 'Failed to clear colors']);
+        }
     }
 }

@@ -64,13 +64,16 @@
     background-color: #e6ffe6;
   }
 
+  &.running {
+    background-color: #f3ec87;
+  }
+
   &.failed {
     background-color: #ffe6e6;
   }
 
   &.expanded {
     background-color: #f0f0f0;
-    /* Remove any properties that increase row size */
   }
 
   &:hover {
@@ -104,6 +107,21 @@
       padding: 5px 0;
       border-bottom: 1px solid #eee;
       white-space: normal; /* Allow wrapping */
+    }
+  }
+
+  .log-details-content {
+    margin: 10px;
+    padding: 10px;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-size: 12px;
+    p {
+      margin: 5px 0;
+      word-break: break-word;
+      font-family: monospace;
     }
   }
 }

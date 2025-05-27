@@ -117,9 +117,20 @@
     pre {
       margin: 0;
       font-size: 13px;
-      color: #1f2937;
+      color: #0069ff;
       white-space: pre-wrap;
       word-break: break-word;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    li {
+      padding: 5px 0;
+      border-bottom: 1px solid #eee;
+      font-size: 12px;
     }
   }
 

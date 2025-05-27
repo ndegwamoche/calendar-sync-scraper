@@ -11,6 +11,7 @@ class DB_Init
     public $tournament_levels_table;
     public $tournament_pools_table;
     public $logs_table;
+    public $colors_table;
 
     public function __construct()
     {
@@ -23,6 +24,7 @@ class DB_Init
         $this->tournament_levels_table = $wpdb->prefix . 'cal_sync_tournament_levels';
         $this->tournament_pools_table = $wpdb->prefix . 'cal_sync_tournament_pools';
         $this->logs_table = $wpdb->prefix . 'cal_sync_logs';
+        $this->colors_table = $wpdb->prefix . 'cal_sync_colors';
     }
 
     public function create_tables()
@@ -68,6 +70,7 @@ class DB_Init
             season_id BIGINT(20) UNSIGNED NOT NULL,
             region_id BIGINT(20) UNSIGNED NOT NULL,
             age_group_id BIGINT(20) UNSIGNED NOT NULL,
+            color VARCHAR(50) DEFAULT NULL,
             PRIMARY KEY (id),
             UNIQUE KEY level_name (level_name)
         ) $charset_collate;";
@@ -105,6 +108,18 @@ class DB_Init
         ) $charset_collate;";
         dbDelta($sql);
 
+        // Colors table
+        $sql = "CREATE TABLE IF NOT EXISTS {$this->colors_table} (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            color_name VARCHAR(50) NOT NULL,
+            hex_code VARCHAR(7) NOT NULL,
+            google_color_id INT DEFAULT NULL,
+            PRIMARY KEY (id),
+            UNIQUE KEY color_name (color_name),
+            UNIQUE KEY hex_code (hex_code)
+        ) $charset_collate;";
+        dbDelta($sql);
+
         // Debugging: Check if tables were created
         $tables = [$this->seasons_table, $this->regions_table, $this->age_groups_table, $this->tournament_levels_table, $this->tournament_pools_table];
         foreach ($tables as $table) {
@@ -126,6 +141,25 @@ class DB_Init
         if (!$table_exists) {
             error_log("Cannot insert data: Table {$this->tournament_pools_table} does not exist on " . current_time('mysql'));
             return;
+        }
+
+        // Insert Colors
+        $colors = [
+            ['color_name' => 'Lavender', 'hex_code' => '#A4BDFC', 'google_color_id' => 1],
+            ['color_name' => 'Sage', 'hex_code' => '#33B679', 'google_color_id' => 2],
+            ['color_name' => 'Grape', 'hex_code' => '#8E24AA', 'google_color_id' => 3],
+            ['color_name' => 'Flamingo', 'hex_code' => '#F4511E', 'google_color_id' => 4],
+            ['color_name' => 'Banana', 'hex_code' => '#F6BF26', 'google_color_id' => 5],
+            ['color_name' => 'Tangerine', 'hex_code' => '#F09300', 'google_color_id' => 6],
+            ['color_name' => 'Peacock', 'hex_code' => '#039BE5', 'google_color_id' => 7],
+            ['color_name' => 'Graphite', 'hex_code' => '#616161', 'google_color_id' => 8],
+            ['color_name' => 'Blueberry', 'hex_code' => '#3F51B5', 'google_color_id' => 9],
+            ['color_name' => 'Basil', 'hex_code' => '#0B8043', 'google_color_id' => 10],
+            ['color_name' => 'Tomato', 'hex_code' => '#D50000', 'google_color_id' => 11],
+        ];
+
+        foreach ($colors as $color) {
+            $wpdb->replace($this->colors_table, $color);
         }
 
         // Insert Seasons

@@ -23,7 +23,12 @@ class Admin_UI
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('wp_ajax_run_calendar_scraper', [$this, 'handle_run_scraper']);
         add_action('wp_ajax_get_tournament_options', [$this, 'get_tournament_options']);
-        add_action('wp_ajax_get_log_info', [$this, 'get_log_info']);
+        add_action('wp_ajax_get_log_info', [$this->logger, 'get_log_info']);
+        add_action('wp_ajax_save_level_color', [$this->data_loader, 'save_level_color']);
+        add_action('wp_ajax_get_level_colors', [$this->data_loader, 'get_level_colors']);
+        add_action('wp_ajax_remove_level_color', [$this->data_loader, 'remove_level_color']);
+        add_action('wp_ajax_clear_level_colors', [$this->data_loader, 'clear_level_colors']);
+        add_action('wp_ajax_get_google_colors', [$this->data_loader, 'get_google_colors']);
     }
 
     public function register_admin_page()
@@ -76,12 +81,6 @@ class Admin_UI
     public function handle_run_scraper()
     {
         $this->scraper->run_scraper();
-    }
-
-    public function get_log_info()
-    {
-        $logs = $this->logger->get_logs(20);
-        wp_send_json_success($logs);
     }
 
     public function get_tournament_options()

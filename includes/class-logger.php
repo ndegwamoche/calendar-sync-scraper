@@ -4,13 +4,21 @@ namespace Calendar_Sync_Scraper;
 
 class Logger
 {
-    public function __construct() {}
+    private $wpdb;
+    private $logs_table;
+
+    public function __construct()
+    {
+        global $wpdb;
+        $this->wpdb = $wpdb;
+
+        $this->logs_table = $wpdb->prefix . 'cal_sync_logs';
+    }
 
     public function start_log($season_id, $region_id, $age_group_id, $pool_id)
     {
-        global $wpdb;
-        $wpdb->insert(
-            $wpdb->prefix . 'cal_sync_logs',
+        $this->wpdb->insert(
+            $this->logs_table,
             [
                 'start_datetime' => current_time('mysql'),
                 'season_id' => $season_id,
@@ -21,19 +29,18 @@ class Logger
                 'total_matches' => 0
             ]
         );
-        return $wpdb->insert_id;
+        return $this->wpdb->insert_id;
     }
 
-    public function update_log($log_id, $total_matches = 0, $error_message = null)
+    public function update_log($log_id, $total_matches = 0, $error_message = null, $status = 'failed')
     {
-        global $wpdb;
         $data = ['total_matches' => $total_matches];
         if ($error_message) {
             $data['error_message'] = $error_message;
-            $data['status'] = 'failed';
+            $data['status'] = $status;
         }
-        $wpdb->update(
-            $wpdb->prefix . 'cal_sync_logs',
+        $this->wpdb->update(
+            $this->logs_table,
             $data,
             ['id' => $log_id]
         );
@@ -41,9 +48,8 @@ class Logger
 
     public function complete_log($log_id)
     {
-        global $wpdb;
-        $wpdb->update(
-            $wpdb->prefix . 'cal_sync_logs',
+        $this->wpdb->update(
+            $this->logs_table,
             [
                 'close_datetime' => current_time('mysql'),
                 'status' => 'completed'
@@ -54,9 +60,8 @@ class Logger
 
     public function log($status, $message = '')
     {
-        global $wpdb;
-        $wpdb->insert(
-            $wpdb->prefix . 'cal_sync_logs',
+        $this->wpdb->insert(
+            $this->logs_table,
             [
                 'start_datetime' => current_time('mysql'),
                 'status' => $status,
@@ -71,14 +76,17 @@ class Logger
      * @param int $limit Number of logs to fetch
      * @return array Array of log objects
      */
-    public function get_logs($limit = 20)
+    public function get_log_info()
     {
-        global $wpdb;
-        $table = $wpdb->prefix . 'cal_sync_logs';
-
-        return $wpdb->get_results(
-            $wpdb->prepare("SELECT * FROM $table ORDER BY start_datetime DESC LIMIT %d", $limit),
+        $results = $this->wpdb->get_results(
+            $this->wpdb->prepare("SELECT * FROM {$this->logs_table} ORDER BY start_datetime DESC LIMIT %d", 30),
             OBJECT
         );
+
+        if (empty($results)) {
+            return [];
+        } else {
+            wp_send_json_success($results);
+        }
     }
 }

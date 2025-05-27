@@ -36,7 +36,7 @@ const Logs = ({ logInfo }) => {
     };
 
     return (
-        <div className="log-viewer">
+        <div id="log-state" className="tab-section">
             <table className="log-table">
                 <thead>
                     <tr>
@@ -65,7 +65,12 @@ const Logs = ({ logInfo }) => {
                                         className={`log-row ${log.status} ${isExpanded ? 'expanded' : ''}`}
                                         onClick={() => toggleExpand(log.id || index)}
                                     >
-                                        <td>{log.status === 'completed' ? '✅ Completed' : '❌ Failed'}</td>
+                                        <td>
+                                            {log.status === 'completed' ? '✅ Completed' :
+                                                log.status === 'failed' ? '❌ Failed' :
+                                                    log.status === 'running' ? '⏳ Running..' :
+                                                        'Unknown'}
+                                        </td>
                                         <td>{log.start_datetime}</td>
                                         <td>{log.close_datetime || 'N/A'}</td>
                                         <td>{log.duration !== null ? log.duration : 'N/A'}</td>
@@ -92,7 +97,11 @@ const Logs = ({ logInfo }) => {
                                     {isExpanded && !detailsData.isJson && detailsData.content && (
                                         <tr className="log-details">
                                             <td colSpan="6">
-                                                <pre>{detailsData.content}</pre>
+                                                <div className="log-details-content">
+                                                    {detailsData.content.split('\\n').map((line, index) => (
+                                                        <p key={index}>{line}</p>
+                                                    ))}
+                                                </div>
                                             </td>
                                         </tr>
                                     )}

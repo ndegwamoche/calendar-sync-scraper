@@ -67,7 +67,6 @@ const App = () => {
         }
     };
 
-    // Fetch dropdown options from DB when season, region, or age group changes
     useEffect(() => {
         if (formData.season) {
             fetch(`${calendarScraperAjax.ajax_url}?action=get_tournament_options&season=${formData.season}&region=${formData.region}&age_group=${formData.ageGroup}&_ajax_nonce=${calendarScraperAjax.nonce}`, {
@@ -87,23 +86,6 @@ const App = () => {
             setPools([]);
         }
     }, [formData.season, formData.region, formData.ageGroup]);
-
-    // Simulate progress while scraping
-    useEffect(() => {
-        let interval;
-        if (isRunning) {
-            setProgress(0);
-            interval = setInterval(() => {
-                setProgress((prev) => {
-                    if (prev >= 90) {
-                        return 90;
-                    }
-                    return prev + 10;
-                });
-            }, 500);
-        }
-        return () => clearInterval(interval);
-    }, [isRunning]);
 
     // Fetch logInfo when the "Log State" tab is activated
     useEffect(() => {
@@ -157,46 +139,98 @@ const App = () => {
             return;
         }
 
+        if (pools.length === 0) {
+            setLog({ message: 'No pools available to scrape.', matches: [] });
+            return;
+        }
+
         setIsRunning(true);
-        setLog({ message: 'Running scraper...', matches: [] });
+        setLog({ message: 'Starting scraper...', matches: [] });
+        setProgress(0);
+
+        let allMatches = [];
+        let completedRequests = 0;
+        const sessionId = Date.now().toString(); // Unique session ID for this run
 
         try {
-            const response = await fetch(calendarScraperAjax.ajax_url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: new URLSearchParams({
-                    action: 'run_calendar_scraper',
-                    _ajax_nonce: calendarScraperAjax.nonce,
-                    season: formData.season,
-                    link_structure: formData.linkStructure,
-                    venue: formData.venue,
-                    region: formData.region,
-                    age_group: formData.ageGroup,
-                    pool: formData.pool,
-                }),
-            });
+            for (const pool of pools) {
+                setLog(prevLog => ({
+                    ...prevLog,
+                    message: `Scraping pool ${pool.tournament_level} - ${pool.pool_name} (${pool.pool_value})...`,
+                    matches: allMatches,
+                }));
 
-            const data = await response.json();
+                const response = await fetch(calendarScraperAjax.ajax_url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        action: 'run_calendar_scraper',
+                        _ajax_nonce: calendarScraperAjax.nonce,
+                        season: formData.season,
+                        link_structure: formData.linkStructure,
+                        venue: formData.venue,
+                        region: formData.region,
+                        age_group: formData.ageGroup,
+                        pool: pool.pool_value,
+                        pool_name: pool.pool_name,
+                        tournament_level: pool.tournament_level,
+                        session_id: sessionId,
+                        total_pools: pools.length
+                    }),
+                });
 
-            if (data.success) {
-                if (data.data.error) {
-                    setLog({ message: data.data.error, matches: [] });
-                    setProgress(0);
-                } else if (Array.isArray(data.data.message) && data.data.message.length === 0) {
-                    setLog({ message: 'No matches found for venue ' + formData.venue, matches: [] });
-                    setProgress(100);
+                const data = await response.json();
+
+                if (data.success) {
+                    if (data.data.error) {
+                        setLog(prevLog => ({
+                            ...prevLog,
+                            message: `Error in pool ${pool.pool_value}: ${data.data.error}`,
+                            matches: allMatches,
+                        }));
+                    } else if (Array.isArray(data.data.message) && data.data.message.length === 0) {
+                        setLog(prevLog => ({
+                            ...prevLog,
+                            message: `No matches found for pool ${pool.pool_value} at venue ${formData.venue}`,
+                            matches: allMatches,
+                        }));
+                    } else {
+                        allMatches = [...allMatches, ...data.data.message];
+                        setLog({
+                            message: `Completed scraping pool ${pool.tournament_level} - ${pool.pool_name} (${pool.pool_value})`,
+                            matches: allMatches,
+                        });
+                    }
                 } else {
-                    setLog({ message: '', matches: data.data.message });
-                    setProgress(100);
+                    setLog(prevLog => ({
+                        ...prevLog,
+                        message: `Error in pool ${pool.pool_value}: ${data.data?.message || 'Something went wrong.'}`,
+                        matches: allMatches,
+                    }));
                 }
+
+                completedRequests++;
+                setProgress((completedRequests / pools.length) * 100);
+            }
+
+            if (allMatches.length === 0) {
+                setLog({
+                    message: `No matches found for any pools at venue ${formData.venue}`,
+                    matches: [],
+                });
             } else {
-                setLog({ message: data.data?.message || 'Something went wrong.', matches: [] });
-                setProgress(0);
+                setLog({
+                    message: `All pools scraped successfully! Found ${allMatches.length} matches`,
+                    matches: allMatches,
+                });
             }
         } catch (error) {
-            setLog({ message: 'Error: ' + error.message, matches: [] });
+            setLog({
+                message: `Error: ${error.message}`,
+                matches: allMatches,
+            });
             setProgress(0);
         } finally {
             setIsRunning(false);
@@ -256,7 +290,7 @@ const App = () => {
                             <form id="calendar-scraper-form" onSubmit={(e) => e.preventDefault()}>
                                 <div className="form-section">
                                     <div className="form-control-group">
-                                        <label htmlFor="season-select" className="form-label">Select Season:</label>
+                                        <label htmlFor="season-select" className="form-label">Season:</label>
                                         <select
                                             id="season-select"
                                             name="season"
@@ -273,7 +307,7 @@ const App = () => {
                                         </select>
                                     </div>
                                     {errors.season && <span className="error-message">{errors.season}</span>}
-                                    <a href="#" className="advanced-link" onClick={(e) => { e.preventDefault(); setShowDropdowns(!showDropdowns); }}>Advanced Settings</a>
+                                    {/* <a href="#" className="advanced-link" onClick={(e) => { e.preventDefault(); setShowDropdowns(!showDropdowns); }}>Advanced Settings</a> */}
                                 </div>
 
                                 {showDropdowns && (
@@ -375,9 +409,8 @@ const App = () => {
                                 )}
 
                                 <div id="scraper-log" className="scraper-log">
-                                    {log.message ? (
-                                        <pre>{log.message}</pre>
-                                    ) : (
+                                    {log.message && <pre>{log.message}</pre>}
+                                    {log.matches.length > 0 ? (
                                         <ul>
                                             {log.matches.map((match, index) => (
                                                 <li key={index}>
@@ -385,6 +418,8 @@ const App = () => {
                                                 </li>
                                             ))}
                                         </ul>
+                                    ) : (
+                                        <p>No matches to display yet.</p>
                                     )}
                                 </div>
                             </form>
@@ -392,21 +427,16 @@ const App = () => {
                     )}
 
                     {activeTab === 'sheet-colors' && (
-                        <div id="sheet-colors" className="tab-section">
-                            <Colors levels={levels} />
-                        </div>
+                        <Colors levels={levels} />
                     )}
 
                     {activeTab === 'log-state' && (
-                        <div id="log-state" className="tab-section">
-                            <Logs logInfo={logInfo} />
-                        </div>
+                        <Logs logInfo={logInfo} />
+
                     )}
 
                     {activeTab === 'settings' && (
-                        <div id="settings" className="tab-section">
-                            <Settings />
-                        </div>
+                        <Settings />
                     )}
                 </div>
             </div>
