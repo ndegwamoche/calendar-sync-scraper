@@ -60,40 +60,61 @@ class Google_Calendar_Sync
                 throw new Exception('Failed to fetch access token with refresh token.');
             }
         } catch (Exception $e) {
-            error_log('Failed to refresh Google Calendar access token: ' . $e->getMessage());
+            wp_send_json_error(['message' => 'Failed to refresh Google Calendar access token: ' . $e->getMessage()]);
             throw $e;
         }
     }
 
-    public function insertMatches($matches)
+    private function parseTidToDateTime(string $tid): string
+    {
+        // Remove weekday and normalize dash characters
+        $tid = preg_replace('/^\w+\s+/', '', $tid); // e.g., "ti 15‑10‑2024 19:30" -> "15‑10‑2024 19:30"
+        $tid = str_replace(['‑', '–'], '-', $tid);  // Normalize dashes
+
+        $dateTime = \DateTime::createFromFormat('d-m-Y H:i', $tid, new \DateTimeZone('Europe/Copenhagen'));
+
+        if (!$dateTime) {
+            throw new \Exception("Invalid datetime format: $tid");
+        }
+
+        return $dateTime->format(\DateTime::RFC3339);
+    }
+
+    public function insertMatches($matches, $season_name, $region_name, $age_group_name, $pool_name, $tournament_level, $color_id, $season, $region, $ageGroup, $pool)
     {
         foreach ($matches as $match) {
             try {
-                $event = new Google_Service_Calendar_Event([
-                    'summary' => "Match: {$match['hjemmehold']} vs {$match['udehold']}",
+                $startDateTime = $this->parseTidToDateTime($match['tid']);
+
+                // Assuming match lasts 2 hours; adjust as needed
+                $endDateTime = (new \DateTime($startDateTime))->modify('+3 hours')->format(\DateTime::RFC3339);
+
+                $description = "$region_name $season_name\n\n" .
+                    "Serie 1 Pulje 1\n" .
+                    "https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#3,{$season},{$pool},{$ageGroup},{$region},98710,,4203\n\n" .
+                    "{$match['hjemmehold']}\n" .
+                    "https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#2,{$season},{$pool},{$ageGroup},{$region},,,4203\n" .
+                    "{$match['udehold']}, {$match['spillested']}\n\n" .
+                    "Resultat: {$match['resultat']}\n" .
+                    "Point: {$match['point']}\n\n" .
+                    "Kampdetaljer\n" .
+                    "https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#5,{$season},{$pool},{$ageGroup},{$region},,{$match['kamp_id']},4203";
+
+                $event = new \Google_Service_Calendar_Event([
+                    'summary' => "$age_group_name $tournament_level $pool_name",
                     'location' => $match['spillested'],
-                    'description' => $match['resultat'],
-                    'start' => $this->createEventDateTime($match['start_datetime'] ?? null),
-                    'end' => $this->createEventDateTime($match['end_datetime'] ?? null),
+                    'description' => $description,
+                    'start' => ['dateTime' => $startDateTime, 'timeZone' => 'Europe/Copenhagen'],
+                    'end' => ['dateTime' => $endDateTime, 'timeZone' => 'Europe/Copenhagen'],
+                    'colorId' => $color_id,
                 ]);
 
                 $this->service->events->insert($this->calendar_id, $event);
-            } catch (Exception $e) {
-                error_log("Failed to insert match {$match['no']}: " . $e->getMessage());
+            } catch (\Exception $e) {
+
+                wp_send_json_error(['message' => "Failed to insert match {$match['no']}: " . $e->getMessage()]);
             }
         }
-    }
-
-    private function createEventDateTime($datetime)
-    {
-        if (!$datetime) {
-            // Default to a placeholder date if no datetime is available
-            $datetime = date('Y-m-d\TH:i:sP', strtotime('+1 day'));
-        }
-        return new Google_Service_Calendar_EventDateTime([
-            'dateTime' => $datetime,
-            'timeZone' => 'UTC',
-        ]);
     }
 
     public function save_google_credentials()
@@ -127,5 +148,29 @@ class Google_Calendar_Sync
             'client_secret' => $clientSecret,
             'refresh_token' => $refreshToken,
         ]);
+    }
+
+    public function clear_google_calendar_events()
+    {
+        try {
+            $pageToken = null;
+            $eventsCleared = 0;
+
+            do {
+                $optParams = ['pageToken' => $pageToken];
+                $events = $this->service->events->listEvents($this->calendar_id, $optParams);
+
+                foreach ($events->getItems() as $event) {
+                    $this->service->events->delete($this->calendar_id, $event->getId());
+                    $eventsCleared++;
+                }
+
+                $pageToken = $events->getNextPageToken();
+            } while ($pageToken);
+
+            wp_send_json_success(['message' => "Successfully cleared $eventsCleared calendar events."]);
+        } catch (\Exception $e) {
+            wp_send_json_error(['message' => 'Failed to clear calendar events: ' . $e->getMessage()]);
+        }
     }
 }

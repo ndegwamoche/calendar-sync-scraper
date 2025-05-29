@@ -70,7 +70,7 @@ class DB_Init
             season_id BIGINT(20) UNSIGNED NOT NULL,
             region_id BIGINT(20) UNSIGNED NOT NULL,
             age_group_id BIGINT(20) UNSIGNED NOT NULL,
-            color VARCHAR(50) DEFAULT NULL,
+            google_color_id INT DEFAULT NULL,
             PRIMARY KEY (id),
             UNIQUE KEY level_name (level_name)
         ) $charset_collate;";

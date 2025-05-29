@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Swal from 'sweetalert2';
 import Logs from './Logs';
 import Colors from './Colors';
 import Settings from './Settings';
@@ -7,15 +8,16 @@ import './App.scss';
 const App = () => {
     const [activeTab, setActiveTab] = useState('main');
     const [isRunning, setIsRunning] = useState(false);
+    const [isClearing, setIsClearing] = useState(false); // Added for loader
     const [progress, setProgress] = useState(0);
     const [log, setLog] = useState({ message: '', matches: [] });
     const [formData, setFormData] = useState({
         season: '42024',
         linkStructure: 'https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#4,{season},{pool},{group},{region},,,,',
         venue: '',
-        region: '4004', // Default to ØST (Sjælland, Lolland F.)
-        ageGroup: '4006', // Default to Senior
-        pool: '14822', // Default to Pool
+        region: '4004',
+        ageGroup: '4006',
+        pool: '14822',
     });
     const [errors, setErrors] = useState({});
     const [showDropdowns, setShowDropdowns] = useState(false);
@@ -61,7 +63,7 @@ const App = () => {
         }));
         if (errors[name]) {
             setErrors((prev) => ({
-                ...prev,
+                ...prevErrors,
                 [name]: '',
             }));
         }
@@ -100,9 +102,7 @@ const App = () => {
                     });
                     const data = await response.json();
                     if (data.success) {
-
                         const formattedLogs = data.data.map(log => {
-
                             const duration = log.close_datetime
                                 ? Math.floor((new Date(log.close_datetime) - new Date(log.start_datetime)) / 1000)
                                 : null;
@@ -150,7 +150,7 @@ const App = () => {
 
         let allMatches = [];
         let completedRequests = 0;
-        const sessionId = Date.now().toString(); // Unique session ID for this run
+        const sessionId = Date.now().toString();
 
         try {
             for (const pool of pools) {
@@ -173,9 +173,13 @@ const App = () => {
                         venue: formData.venue,
                         region: formData.region,
                         age_group: formData.ageGroup,
+                        age_group_name: pool.age_group_name,
+                        region_name: pool.region_name,
+                        season_name: pool.season_name,
                         pool: pool.pool_value,
                         pool_name: pool.pool_name,
                         tournament_level: pool.tournament_level,
+                        color_id: pool.google_color_id,
                         session_id: sessionId,
                         total_pools: pools.length
                     }),
@@ -234,6 +238,43 @@ const App = () => {
             setProgress(0);
         } finally {
             setIsRunning(false);
+        }
+    };
+
+    const handleClearMatches = async () => {
+        const result = await Swal.fire({
+            title: 'Are you sure?',
+            text: 'Do you want to clear all matches?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d63638',
+            cancelButtonColor: '#666',
+            confirmButtonText: 'Yes, clear all',
+            cancelButtonText: 'Cancel',
+        });
+
+        if (result.isConfirmed) {
+            setIsClearing(true); // Start loader
+            try {
+                const response = await fetch(calendarScraperAjax.ajax_url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        action: 'clear_google_calendar_events',
+                        _ajax_nonce: calendarScraperAjax.nonce,
+                    }),
+                });
+                const data = await response.json();
+                if (data.success) {
+                    setLog({ message: 'All matches cleared successfully.', matches: [] });
+                } else {
+                    setLog({ message: `Failed to clear matches: ${data.data?.message || 'Unknown error'}`, matches: [] });
+                }
+            } catch (error) {
+                setLog({ message: `Error clearing matches: ${error.message}`, matches: [] });
+            } finally {
+                setIsClearing(false); // Stop loader
+            }
         }
     };
 
@@ -307,7 +348,6 @@ const App = () => {
                                         </select>
                                     </div>
                                     {errors.season && <span className="error-message">{errors.season}</span>}
-                                    {/* <a href="#" className="advanced-link" onClick={(e) => { e.preventDefault(); setShowDropdowns(!showDropdowns); }}>Advanced Settings</a> */}
                                 </div>
 
                                 {showDropdowns && (
@@ -353,7 +393,7 @@ const App = () => {
                                             <option value="">-- Select Pool --</option>
                                             {pools.map((pool) => (
                                                 <option key={pool.pool_value} value={pool.pool_value}>
-                                                    {pool.tournament_level} - {pool.pool_name}
+                                                    {pool.tournament_level} - ${pool.pool_name}
                                                 </option>
                                             ))}
                                         </select>
@@ -392,19 +432,31 @@ const App = () => {
                                     {errors.venue && <span className="error-message">{errors.venue}</span>}
                                 </div>
 
-                                <button
-                                    type="button"
-                                    id="run-scraper-now"
-                                    className="button button-primary"
-                                    onClick={handleRunScraper}
-                                    disabled={isRunning}
-                                >
-                                    {isRunning ? 'Running...' : 'Run Scraper Now'}
-                                </button>
+                                <div className="form-section button-group" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <button
+                                        type="button"
+                                        id="run-scraper-now"
+                                        className="button button-primary"
+                                        onClick={handleRunScraper}
+                                        disabled={isRunning || isClearing}
+                                    >
+                                        {isRunning ? 'Running...' : 'Run Scraper Now'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        id="clear-matches"
+                                        className="button button-secondary"
+                                        onClick={handleClearMatches}
+                                        disabled={isRunning || isClearing}
+                                    >
+                                        Clear All Matches
+                                    </button>
+                                </div>
 
-                                {isRunning && (
+                                {(isRunning || isClearing) && (
                                     <div id="scraper-progress">
-                                        <progress value={progress} max="100"></progress>
+                                        {isRunning && <progress value={progress} max="100"></progress>}
+                                        {isClearing && <div className="loader">Clearing...</div>}
                                     </div>
                                 )}
 
@@ -414,7 +466,7 @@ const App = () => {
                                         <ul>
                                             {log.matches.map((match, index) => (
                                                 <li key={index}>
-                                                    Match {match.tid}: {match.hjemmehold} vs {match.udehold} at {match.spillested} - {match.resultat}
+                                                    Match ${match.tid}: ${match.hjemmehold} vs ${match.udehold} at ${match.spillested} - ${match.resultat}
                                                 </li>
                                             ))}
                                         </ul>
@@ -432,7 +484,6 @@ const App = () => {
 
                     {activeTab === 'log-state' && (
                         <Logs logInfo={logInfo} />
-
                     )}
 
                     {activeTab === 'settings' && (

@@ -25,7 +25,7 @@ class Admin_UI
 
         add_action('admin_menu', [$this, 'register_admin_page']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
-        add_action('wp_ajax_run_calendar_scraper', [$this, 'handle_run_scraper']);
+        add_action('wp_ajax_run_calendar_scraper', [$this->scraper, 'run_scraper']);
         add_action('wp_ajax_get_tournament_options', [$this, 'get_tournament_options']);
         add_action('wp_ajax_get_log_info', [$this->logger, 'get_log_info']);
         add_action('wp_ajax_save_level_color', [$this->data_loader, 'save_level_color']);
@@ -35,6 +35,7 @@ class Admin_UI
         add_action('wp_ajax_get_google_colors', [$this->data_loader, 'get_google_colors']);
         add_action('wp_ajax_save_google_credentials', [$this->google_calendar, 'save_google_credentials']);
         add_action('wp_ajax_get_google_credentials', [$this->google_calendar, 'get_google_credentials']);
+        add_action('wp_ajax_clear_google_calendar_events', [$this->google_calendar, 'clear_google_calendar_events']);
     }
 
     public function register_admin_page()
@@ -82,11 +83,6 @@ class Admin_UI
             'age_groups' => $data['age_groups'],
             'tournament_levels' => $data['tournament_levels'],
         ]);
-    }
-
-    public function handle_run_scraper()
-    {
-        $this->scraper->run_scraper();
     }
 
     public function get_tournament_options()

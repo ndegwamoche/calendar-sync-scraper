@@ -50,11 +50,15 @@ class Scraper
             $venue = sanitize_text_field($_POST['venue']);
             $region = sanitize_text_field($_POST['region']);
             $ageGroup = sanitize_text_field($_POST['age_group']);
+            $age_group_name = sanitize_text_field($_POST['age_group_name'] ?? '');
             $pool = sanitize_text_field($_POST['pool']);
             $pool_name = sanitize_text_field($_POST['pool_name'] ?? '');
             $session_id = sanitize_text_field($_POST['session_id'] ?? '');
             $total_pools = (int) ($_POST['total_pools'] ?? 1);
             $tournament_level = sanitize_text_field($_POST['tournament_level'] ?? '');
+            $color_id = sanitize_text_field($_POST['color_id'] ?? '');
+            $region_name = sanitize_text_field($_POST['region_name'] ?? '');
+            $season_name = sanitize_text_field($_POST['season_name'] ?? '');
 
             if (empty($session_id)) {
                 throw new Exception('Session ID is required.');
@@ -101,7 +105,7 @@ class Scraper
                 $response['data']['message'] = $matches;
 
                 $google_calendar_sync = new Google_Calendar_Sync();
-                $google_calendar_sync->insertMatches($matches);
+                $google_calendar_sync->insertMatches($matches, $season_name, $region_name, $age_group_name, $pool_name, $tournament_level, $color_id, $season, $region, $ageGroup, $pool);
             }
 
             // Update log in database

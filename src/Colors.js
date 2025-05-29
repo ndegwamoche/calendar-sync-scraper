@@ -3,13 +3,8 @@ import Swal from 'sweetalert2';
 import './Colors.scss';
 
 const Colors = ({ levels }) => {
-    const availableColors = [
-        '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF',
-        '#00FFFF', '#FFA500', '#800080', '#008000', '#FFC0CB',
-    ];
-
     const [googleColors, setGoogleColors] = useState([]);
-    const [levelColors, setLevelColors] = useState({});
+    const [levelColors, setLevelColors] = useState({}); // Stores level_id -> google_color_id
     const [selectedLevel, setSelectedLevel] = useState('');
     const [availableLevels, setAvailableLevels] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -27,9 +22,7 @@ const Colors = ({ levels }) => {
                 });
                 const data = await response.json();
                 if (data.success) {
-                    // Extract hex codes from the object values
-                    const colors = Object.values(data.data).map(color => color.hex_code);
-                    setGoogleColors(colors);
+                    setGoogleColors(Object.values(data.data)); // Store full color objects
                 } else {
                     console.error('Failed to fetch Google colors:', data.data?.message || 'Unknown error');
                 }
@@ -50,7 +43,7 @@ const Colors = ({ levels }) => {
                 });
                 const data = await response.json();
                 if (data.success) {
-                    setLevelColors(data.data);
+                    setLevelColors(data.data); // Expects level_id -> google_color_id
                 } else {
                     console.error('Failed to fetch level colors:', data.data?.message || 'Unknown error');
                 }
@@ -59,7 +52,6 @@ const Colors = ({ levels }) => {
             }
         };
 
-        // Run both fetches concurrently and set loading state
         Promise.all([fetchGoogleColors(), fetchLevelColors()])
             .finally(() => setLoading(false));
     }, []);
@@ -68,7 +60,7 @@ const Colors = ({ levels }) => {
         setAvailableLevels(levels.filter(level => !levelColors[level.id]));
     }, [levels, levelColors]);
 
-    const handleAssignColor = async (levelID, color) => {
+    const handleAssignColor = async (levelID, googleColorId) => {
         try {
             const response = await fetch(calendarScraperAjax.ajax_url, {
                 method: 'POST',
@@ -77,12 +69,12 @@ const Colors = ({ levels }) => {
                     action: 'save_level_color',
                     _ajax_nonce: calendarScraperAjax.nonce,
                     level_id: levelID,
-                    color,
+                    google_color_id: googleColorId, // Send google_color_id instead of color
                 }),
             });
             const data = await response.json();
             if (data.success) {
-                setLevelColors((prev) => ({ ...prev, [levelID]: color }));
+                setLevelColors((prev) => ({ ...prev, [levelID]: googleColorId }));
                 setSelectedLevel('');
             } else {
                 console.error('Failed to save level color:', data.data?.message || 'Unknown error');
@@ -166,6 +158,12 @@ const Colors = ({ levels }) => {
         }
     };
 
+    // Helper to find hex code by google_color_id
+    const getHexCode = (googleColorId) => {
+        const colorObj = googleColors.find(color => color.google_color_id === googleColorId);
+        return colorObj ? colorObj.hex_code : '#000000'; // Fallback color
+    };
+
     return (
         <div id="sheet-colors" className="tab-section">
             <div className="form-section">
@@ -190,15 +188,15 @@ const Colors = ({ levels }) => {
             <div className="form-section">
                 <h4>Available Colors:</h4>
                 <div className="color-swatches">
-                    {googleColors.map((color) => (
+                    {googleColors.map((colorObj) => (
                         <div
-                            key={color}
+                            key={colorObj.google_color_id}
                             className={`color-swatch ${selectedLevel ? 'clickable' : 'disabled'}`}
-                            style={{ backgroundColor: color }}
-                            title={color}
+                            style={{ backgroundColor: colorObj.hex_code }}
+                            title={colorObj.color_name}
                             onClick={() => {
                                 if (selectedLevel) {
-                                    handleAssignColor(selectedLevel, color);
+                                    handleAssignColor(selectedLevel, colorObj.google_color_id);
                                 }
                             }}
                         ></div>
@@ -213,12 +211,13 @@ const Colors = ({ levels }) => {
                     <p>No colors assigned.</p>
                 ) : (
                     <ul className="assigned-colors">
-                        {Object.entries(levelColors).map(([levelID, color]) => {
+                        {Object.entries(levelColors).map(([levelID, googleColorId]) => {
                             const level = levels.find(l => l.id === levelID);
+                            const hexCode = getHexCode(googleColorId);
                             return (
                                 <li key={levelID}>
                                     <span className="level-name">{level?.level_name || 'Unknown Level'}</span>
-                                    <span style={{ backgroundColor: color, display: 'inline-block', width: '20px', height: '20px' }} />
+                                    <span style={{ backgroundColor: hexCode, display: 'inline-block', width: '20px', height: '20px' }} />
                                     <button
                                         className="remove-color"
                                         onClick={() => handleRemoveColor(levelID)}

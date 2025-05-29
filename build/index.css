@@ -189,7 +189,7 @@
 .tab-section .button {
   padding: 10px 20px;
   border: none;
-  border-radius: 4px;
+  border-radius: 4px !important;
   cursor: pointer;
 }
 
@@ -330,7 +330,7 @@
   color: #ffffff;
   background: #3b82f6;
   border: none;
-  border-radius: 6px;
+  border-radius: 6px !important;
   cursor: pointer;
   transition: background 0.2s ease-in-out;
 }

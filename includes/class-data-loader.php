@@ -81,10 +81,25 @@ class Data_Loader
                     tp.id,
                     tp.pool_name,
                     tp.pool_value,
-                    tp.tournament_level
+                    tp.tournament_level,
+                    s.season_name,
+                    r.region_name,
+                    a.age_group_name,
+                    (
+                        SELECT
+                            google_color_id
+                        FROM
+                            wp_cal_sync_tournament_levels
+                        WHERE
+                            level_name LIKE tp.tournament_level
+                    )google_color_id
                 FROM
-                    {$this->tournament_pools_table} tp
-                WHERE tp.season_id = %d
+                    wp_cal_sync_tournament_pools tp
+                JOIN wp_cal_sync_seasons s ON s.season_value = tp.season_id
+                JOIN wp_cal_sync_regions r ON r.region_value = tp.region_id
+                JOIN wp_cal_sync_age_groups a ON a.age_group_value = tp.age_group_id
+                WHERE
+                    tp.season_id = %d
                 AND tp.region_id = %d
                 AND tp.age_group_id = %d",
                 $season,
@@ -109,26 +124,31 @@ class Data_Loader
     public function save_level_color()
     {
         $level_id = sanitize_text_field($_POST['level_id']);
-        $color = sanitize_hex_color($_POST['color']);
+        $google_color_id = sanitize_text_field($_POST['google_color_id']);
 
-        if (!isset($level_id) || !isset($color)) {
+        if (!isset($level_id) || !isset($google_color_id)) {
             wp_send_json_error(['message' => 'Invalid request']);
             return;
         }
 
-        if (!$color) {
-            wp_send_json_error(['message' => 'Invalid color']);
+        // Validate google_color_id exists in colors table
+        $existing_color = $this->wpdb->get_var(
+            $this->wpdb->prepare("SELECT COUNT(*) FROM $this->colors_table WHERE google_color_id = %s", $google_color_id)
+        );
+
+        if (!$existing_color) {
+            wp_send_json_error(['message' => 'Invalid Google color ID']);
             return;
         }
 
-        $existing = $this->wpdb->get_var(
+        $existing_level = $this->wpdb->get_var(
             $this->wpdb->prepare("SELECT COUNT(*) FROM $this->tournament_levels_table WHERE id = %d", $level_id)
         );
 
-        if ($existing > 0) {
+        if ($existing_level > 0) {
             $result = $this->wpdb->update(
                 $this->tournament_levels_table,
-                ['color' => $color],
+                ['google_color_id' => $google_color_id],
                 ['id' => $level_id],
                 ['%s'],
                 ['%d']
@@ -145,13 +165,13 @@ class Data_Loader
     public function get_level_colors()
     {
         $results = $this->wpdb->get_results(
-            "SELECT id, color FROM {$this->tournament_levels_table} WHERE color IS NOT NULL AND color != ''",
+            "SELECT id, google_color_id FROM {$this->tournament_levels_table} WHERE google_color_id IS NOT NULL AND google_color_id != ''",
             ARRAY_A
         );
 
         $colors = [];
         foreach ($results as $row) {
-            $colors[$row['id']] = $row['color'];
+            $colors[$row['id']] = $row['google_color_id'];
         }
 
         wp_send_json_success($colors);
@@ -161,10 +181,9 @@ class Data_Loader
     {
         $level_id = isset($_POST['level_id']) ? intval($_POST['level_id']) : 0;
 
-        $level_id = intval($level_id);
-
         if ($level_id <= 0) {
-            throw new Exception('Invalid level ID.');
+            wp_send_json_error(['message' => 'Invalid level ID']);
+            return;
         }
 
         $existing = $this->wpdb->get_var(
@@ -174,7 +193,7 @@ class Data_Loader
         if ($existing > 0) {
             $result = $this->wpdb->update(
                 $this->tournament_levels_table,
-                ['color' => null],
+                ['google_color_id' => null],
                 ['id' => $level_id],
                 ['%s'],
                 ['%d']
@@ -190,8 +209,6 @@ class Data_Loader
 
     public function get_google_colors()
     {
-
-
         $results = $this->wpdb->get_results(
             "SELECT id, color_name, hex_code, google_color_id FROM {$this->colors_table} ORDER BY id ASC",
             ARRAY_A
@@ -202,7 +219,7 @@ class Data_Loader
             $colors[$row['id']] = [
                 'color_name' => $row['color_name'],
                 'hex_code' => $row['hex_code'],
-                'google_id' => $row['google_color_id'],
+                'google_color_id' => $row['google_color_id'],
             ];
         }
 
@@ -211,8 +228,8 @@ class Data_Loader
 
     public function clear_level_colors()
     {
-        $result = $this->wpdb->query("UPDATE {$this->tournament_levels_table} SET color = NULL");
-        if ($result) {
+        $result = $this->wpdb->query("UPDATE {$this->tournament_levels_table} SET google_color_id = NULL");
+        if ($result !== false) {
             wp_send_json_success(['message' => 'All colors cleared successfully']);
         } else {
             wp_send_json_error(['message' => 'Failed to clear colors']);
