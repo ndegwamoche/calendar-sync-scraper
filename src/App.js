@@ -466,7 +466,7 @@ const App = () => {
                                         <ul>
                                             {log.matches.map((match, index) => (
                                                 <li key={index}>
-                                                    Match ${match.tid}: ${match.hjemmehold} vs ${match.udehold} at ${match.spillested} - ${match.resultat}
+                                                    Match {match.no}: Time {match.tid}: {match.hjemmehold}({match.hjemmehold_id}) vs {match.udehold}({match.udehold_id}) at {match.spillested} - {match.resultat}
                                                 </li>
                                             ))}
                                         </ul>

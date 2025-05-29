@@ -91,14 +91,14 @@ class Google_Calendar_Sync
 
                 $description = "$region_name $season_name\n\n" .
                     "Serie 1 Pulje 1\n" .
-                    "https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#3,{$season},{$pool},{$ageGroup},{$region},98710,,4203\n\n" .
+                    "https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#3,{$season},{$pool},{$ageGroup},{$region},{$match['hjemmehold_id']},,4203\n\n" .
                     "{$match['hjemmehold']}\n" .
                     "https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#2,{$season},{$pool},{$ageGroup},{$region},,,4203\n" .
                     "{$match['udehold']}, {$match['spillested']}\n\n" .
                     "Resultat: {$match['resultat']}\n" .
                     "Point: {$match['point']}\n\n" .
                     "Kampdetaljer\n" .
-                    "https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#5,{$season},{$pool},{$ageGroup},{$region},,{$match['kamp_id']},4203";
+                    "https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#5,{$season},{$pool},{$ageGroup},{$region},,{$match['no']},4203";
 
                 $event = new \Google_Service_Calendar_Event([
                     'summary' => "$age_group_name $tournament_level $pool_name",

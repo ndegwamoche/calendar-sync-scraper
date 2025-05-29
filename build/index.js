@@ -5181,7 +5181,7 @@ const App = () => {
                 children: log.message
               }), log.matches.length > 0 ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("ul", {
                 children: log.matches.map((match, index) => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("li", {
-                  children: ["Match $", match.tid, ": $", match.hjemmehold, " vs $", match.udehold, " at $", match.spillested, " - $", match.resultat]
+                  children: ["Match ", match.no, ": Time ", match.tid, ": ", match.hjemmehold, "(", match.hjemmehold_id, ") vs ", match.udehold, "(", match.udehold_id, ") at ", match.spillested, " - ", match.resultat]
                 }, index))
               }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("p", {
                 children: "No matches to display yet."

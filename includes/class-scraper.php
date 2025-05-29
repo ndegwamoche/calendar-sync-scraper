@@ -205,6 +205,15 @@ class Scraper
                 $rowData = [];
                 $tr->filter('td')->each(function (Crawler $td, $index) use ($headers, &$rowData) {
                     $value = trim($td->text());
+
+                    if ($td->filter('a')->count() && in_array($headers[$index], ['hjemmehold', 'udehold'])) {
+                        $onclick = $td->filter('a')->attr('onclick');
+                        if (preg_match("/ShowStanding\((?:'[^']*',\s*){5}'(\d+)'/", $onclick, $matches)) {
+                            $teamId = $matches[1];
+                            $rowData[$headers[$index] . '_id'] = $teamId;
+                        }
+                    }
+
                     if ($index < count($headers)) {
                         $rowData[$headers[$index]] = $value;
                     }
