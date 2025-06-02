@@ -2,12 +2,42 @@ import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import './Colors.scss';
 
-const Colors = ({ levels }) => {
+const Colors = ({ season, url, regions, ageGroups }) => {
     const [googleColors, setGoogleColors] = useState([]);
-    const [levelColors, setLevelColors] = useState({}); // Stores level_id -> google_color_id
+    const [levelColors, setLevelColors] = useState({});
     const [selectedLevel, setSelectedLevel] = useState('');
     const [availableLevels, setAvailableLevels] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedRegion, setSelectedRegion] = useState('');
+    const [selectedAgeGroup, setSelectedAgeGroup] = useState('');
+    const [pools, setPools] = useState([]);
+    const levels = window.calendarScraperAjax?.tournament_levels || [];
+
+    useEffect(() => {
+        const fetchPools = async () => {
+            try {
+                const response = await fetch(
+                    `${calendarScraperAjax.ajax_url}?action=get_tournament_options&season=${season}&region=${selectedRegion}&age_group=${selectedAgeGroup}&_ajax_nonce=${calendarScraperAjax.nonce}`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                    }
+                );
+                const data = await response.json();
+                if (data.success) {
+                    setPools(data.data.pools || []);
+                } else {
+                    console.error('Failed to fetch pools:', data.data?.message || 'Unknown error');
+                }
+            } catch (error) {
+                console.error('Error fetching pools:', error);
+            }
+        };
+
+        fetchPools();
+    }, [season, selectedRegion, selectedAgeGroup]);
 
     useEffect(() => {
         const fetchGoogleColors = async () => {
@@ -69,7 +99,7 @@ const Colors = ({ levels }) => {
                     action: 'save_level_color',
                     _ajax_nonce: calendarScraperAjax.nonce,
                     level_id: levelID,
-                    google_color_id: googleColorId, // Send google_color_id instead of color
+                    google_color_id: googleColorId,
                 }),
             });
             const data = await response.json();
@@ -158,14 +188,82 @@ const Colors = ({ levels }) => {
         }
     };
 
-    // Helper to find hex code by google_color_id
+    const handleScrapingPools = async () => {
+        const result = await Swal.fire({
+            title: 'Are you sure?',
+            text: 'Do you want to scrape pools for all regions and age groups?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d63638',
+            cancelButtonColor: '#666',
+            confirmButtonText: 'Yes, scrape pools',
+            cancelButtonText: 'Cancel',
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch(calendarScraperAjax.ajax_url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        action: 'run_pools_scraping',
+                        season: season,
+                        link_structure: url,
+                        _ajax_nonce: calendarScraperAjax.nonce,
+                    }),
+                });
+                const data = await response.json();
+                if (data.success) {
+
+                } else {
+                    console.error('Failed to scrape pools:', data.data?.message || 'Unknown error');
+                }
+            } catch (error) {
+                console.error('Error scraping pools:', error);
+            }
+        }
+    };
+
     const getHexCode = (googleColorId) => {
         const colorObj = googleColors.find(color => color.google_color_id === googleColorId);
-        return colorObj ? colorObj.hex_code : '#000000'; // Fallback color
+        return colorObj ? colorObj.hex_code : '#000000';
     };
 
     return (
         <div id="sheet-colors" className="tab-section">
+            <div className="form-section dropdown-row">
+                <label htmlFor="region-select" className="form-label">Regions & Groups:</label>
+                <select
+                    id="region-select"
+                    name="region"
+                    className="form-select"
+                    value={selectedRegion}
+                    onChange={(e) => setSelectedRegion(e.target.value)}
+                >
+                    <option value="">-- Select Region --</option>
+                    {regions.map((region) => (
+                        <option key={region.region_value} value={region.region_value}>
+                            {region.region_name}
+                        </option>
+                    ))}
+                </select>
+
+                <select
+                    id="age-group-select"
+                    name="ageGroup"
+                    className="form-select"
+                    value={selectedAgeGroup}
+                    onChange={(e) => setSelectedAgeGroup(e.target.value)}
+                >
+                    <option value="">-- Select Age Group --</option>
+                    {ageGroups.map((ageGroup) => (
+                        <option key={ageGroup.age_group_value} value={ageGroup.age_group_value}>
+                            {ageGroup.age_group_name}
+                        </option>
+                    ))}
+                </select>
+            </div>
+
             <div className="form-section">
                 <div className="form-control-group">
                     <label htmlFor="level-select-color" className="form-label">Tournament Level:</label>
@@ -231,13 +329,24 @@ const Colors = ({ levels }) => {
                     </ul>
                 )}
             </div>
-            <button
-                type="button"
-                className="button button-secondary"
-                onClick={handleClearAll}
-            >
-                Clear All Colors
-            </button>
+
+            <div className="form-section button-group" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <button
+                    type="button"
+                    className="button button-primary"
+                    onClick={handleScrapingPools}
+                >
+                    Run Pools Scraping
+                </button>
+                <button
+                    type="button"
+                    className="button button-secondary"
+                    onClick={handleClearAll}
+                >
+                    Clear All Colors
+                </button>
+            </div>
+
         </div>
     );
 };

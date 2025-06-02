@@ -36,6 +36,7 @@ class Admin_UI
         add_action('wp_ajax_save_google_credentials', [$this->google_calendar, 'save_google_credentials']);
         add_action('wp_ajax_get_google_credentials', [$this->google_calendar, 'get_google_credentials']);
         add_action('wp_ajax_clear_google_calendar_events', [$this->google_calendar, 'clear_google_calendar_events']);
+        add_action('wp_ajax_run_pools_scraping', [$this->scraper, 'run_pools_scraping']);
     }
 
     public function register_admin_page()

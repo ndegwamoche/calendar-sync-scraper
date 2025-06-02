@@ -4708,7 +4708,7 @@ __webpack_require__.r(__webpack_exports__);
 const App = () => {
   const [activeTab, setActiveTab] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('main');
   const [isRunning, setIsRunning] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
-  const [isClearing, setIsClearing] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false); // Added for loader
+  const [isClearing, setIsClearing] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
   const [progress, setProgress] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(0);
   const [log, setLog] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
     message: '',
@@ -4717,46 +4717,30 @@ const App = () => {
   const [formData, setFormData] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
     season: '42024',
     linkStructure: 'https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#4,{season},{pool},{group},{region},,,,',
-    venue: '',
-    region: '4004',
-    ageGroup: '4006',
-    pool: '14822'
+    venue: ''
   });
   const [errors, setErrors] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({});
-  const [showDropdowns, setShowDropdowns] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
-  const [pools, setPools] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
   const seasons = window.calendarScraperAjax?.seasons || [];
+  const [logInfo, setLogInfo] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
   const regions = window.calendarScraperAjax?.regions || [];
   const ageGroups = window.calendarScraperAjax?.age_groups || [];
-  const levels = window.calendarScraperAjax?.tournament_levels || [];
-  const [logInfo, setLogInfo] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
-
-  // Validation function
   const validateForm = () => {
     const newErrors = {};
-
-    // Validate Season
     if (!formData.season) {
       newErrors.season = 'Please select a season.';
     }
-
-    // Validate Link Structure
     const linkStructureRegex = /^https:\/\/www\.bordtennisportalen\.dk\/DBTU\/HoldTurnering\/Stilling\/#4,\{season\},\{pool\},\{group\},\{region\},,,,$/;
     if (!formData.linkStructure) {
       newErrors.linkStructure = 'Link structure is required.';
     } else if (!linkStructureRegex.test(formData.linkStructure)) {
       newErrors.linkStructure = 'Link structure must match the expected format.';
     }
-
-    // Validate Venue
     if (!formData.venue.trim()) {
       newErrors.venue = 'Venue name is required.';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
-  // Handle input changes
   const handleInputChange = e => {
     const {
       name,
@@ -4768,29 +4752,11 @@ const App = () => {
     }));
     if (errors[name]) {
       setErrors(prev => ({
-        ...prevErrors,
+        ...prev,
         [name]: ''
       }));
     }
   };
-  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
-    if (formData.season) {
-      fetch(`${calendarScraperAjax.ajax_url}?action=get_tournament_options&season=${formData.season}&region=${formData.region}&age_group=${formData.ageGroup}&_ajax_nonce=${calendarScraperAjax.nonce}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
-      }).then(response => response.json()).then(data => {
-        if (data.success) {
-          setPools(data.data.pools || []);
-        }
-      }).catch(error => console.error('Error fetching pools:', error));
-    } else {
-      setPools([]);
-    }
-  }, [formData.season, formData.region, formData.ageGroup]);
-
-  // Fetch logInfo when the "Log State" tab is activated
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
     if (activeTab === 'log-state') {
       const fetchLogInfo = async () => {
@@ -4819,16 +4785,18 @@ const App = () => {
             setLogInfo(formattedLogs);
           } else {
             console.error('Failed to fetch log info:', data.data?.message || 'Unknown error');
-            setLogInfo([]); // Clear logInfo on error
+            setLogInfo([]);
           }
         } catch (error) {
           console.error('Error fetching log info:', error);
-          setLogInfo([]); // Clear logInfo on error
+          setLogInfo([]);
         }
       };
       fetchLogInfo();
     }
   }, [activeTab]);
+
+  // Handle scraper run for all regions and age groups
   const handleRunScraper = async () => {
     if (!validateForm()) {
       setLog({
@@ -4837,83 +4805,154 @@ const App = () => {
       });
       return;
     }
-    if (pools.length === 0) {
-      setLog({
-        message: 'No pools available to scrape.',
-        matches: []
+
+    // Create combinations of regions and age groups
+    const regionAgeGroupCombinations = [];
+    for (const region of regions) {
+      for (const ageGroup of ageGroups) {
+        regionAgeGroupCombinations.push({
+          region,
+          ageGroup
+        });
+      }
+    }
+
+    // Confirmation for large scraping tasks
+    const totalCombinations = regionAgeGroupCombinations.length;
+    if (totalCombinations > 10) {
+      const result = await sweetalert2__WEBPACK_IMPORTED_MODULE_1___default().fire({
+        title: 'Large Scraping Task',
+        text: `You are about to scrape ${totalCombinations} region and age group combinations. This may take a while. Continue?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, proceed',
+        cancelButtonText: 'Cancel'
       });
-      return;
+      if (!result.isConfirmed) {
+        setLog({
+          message: 'Scraping cancelled by user.',
+          matches: []
+        });
+        return;
+      }
     }
     setIsRunning(true);
     setLog({
-      message: 'Starting scraper...',
+      message: 'Starting scraper for all regions and age groups...',
       matches: []
     });
     setProgress(0);
     let allMatches = [];
     let completedRequests = 0;
     const sessionId = Date.now().toString();
+    let totalPools = 0;
     try {
-      for (const pool of pools) {
+      // Loop through all regions and age groups
+      for (const {
+        region,
+        ageGroup
+      } of regionAgeGroupCombinations) {
         setLog(prevLog => ({
           ...prevLog,
-          message: `Scraping pool ${pool.tournament_level} - ${pool.pool_name} (${pool.pool_value})...`,
+          message: `Fetching pools for region ${region.region_name} (${region.region_value}) and age group ${ageGroup.age_group_name} (${ageGroup.age_group_value})...`,
           matches: allMatches
         }));
-        const response = await fetch(calendarScraperAjax.ajax_url, {
-          method: 'POST',
+
+        // Fetch pools for the current region and age group
+        const response = await fetch(`${calendarScraperAjax.ajax_url}?action=get_tournament_options&season=${formData.season}&region=${region.region_value}&age_group=${ageGroup.age_group_value}&_ajax_nonce=${calendarScraperAjax.nonce}`, {
+          method: 'GET',
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
-          },
-          body: new URLSearchParams({
-            action: 'run_calendar_scraper',
-            _ajax_nonce: calendarScraperAjax.nonce,
-            season: formData.season,
-            link_structure: formData.linkStructure,
-            venue: formData.venue,
-            region: formData.region,
-            age_group: formData.ageGroup,
-            age_group_name: pool.age_group_name,
-            region_name: pool.region_name,
-            season_name: pool.season_name,
-            pool: pool.pool_value,
-            pool_name: pool.pool_name,
-            tournament_level: pool.tournament_level,
-            color_id: pool.google_color_id,
-            session_id: sessionId,
-            total_pools: pools.length
-          })
-        });
-        const data = await response.json();
-        if (data.success) {
-          if (data.data.error) {
-            setLog(prevLog => ({
-              ...prevLog,
-              message: `Error in pool ${pool.pool_value}: ${data.data.error}`,
-              matches: allMatches
-            }));
-          } else if (Array.isArray(data.data.message) && data.data.message.length === 0) {
-            setLog(prevLog => ({
-              ...prevLog,
-              message: `No matches found for pool ${pool.pool_value} at venue ${formData.venue}`,
-              matches: allMatches
-            }));
-          } else {
-            allMatches = [...allMatches, ...data.data.message];
-            setLog({
-              message: `Completed scraping pool ${pool.tournament_level} - ${pool.pool_name} (${pool.pool_value})`,
-              matches: allMatches
-            });
           }
+        });
+        const poolData = await response.json();
+        let currentPools = [];
+        if (poolData.success) {
+          currentPools = poolData.data.pools || [];
+          totalPools += currentPools.length;
         } else {
           setLog(prevLog => ({
             ...prevLog,
-            message: `Error in pool ${pool.pool_value}: ${data.data?.message || 'Something went wrong.'}`,
+            message: `Failed to fetch pools for region ${region.region_name} (${region.region_value}), age group ${ageGroup.age_group_name}: ${poolData.data?.message || 'Unknown error'}`,
             matches: allMatches
           }));
+          continue;
         }
-        completedRequests++;
-        setProgress(completedRequests / pools.length * 100);
+        if (currentPools.length === 0) {
+          setLog(prevLog => ({
+            ...prevLog,
+            message: `No pools found for region ${region.region_name} (${region.region_value}), age group ${ageGroup.age_group_name}`,
+            matches: allMatches
+          }));
+          completedRequests++;
+          setProgress(completedRequests / totalCombinations * 100);
+          continue;
+        }
+
+        // Scrape each pool for the current region and age group
+        for (const pool of currentPools) {
+          setLog(prevLog => ({
+            ...prevLog,
+            message: `Scraping pool ${pool.tournament_level} - ${pool.pool_name} (${pool.pool_value}) for region ${region.region_name}, age group ${ageGroup.age_group_name}...`,
+            matches: allMatches
+          }));
+          const response = await fetch(calendarScraperAjax.ajax_url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({
+              action: 'run_calendar_scraper',
+              _ajax_nonce: calendarScraperAjax.nonce,
+              season: formData.season,
+              link_structure: formData.linkStructure,
+              venue: formData.venue,
+              region: region.region_value,
+              age_group: ageGroup.age_group_value,
+              age_group_name: ageGroup.age_group_name,
+              region_name: region.region_name,
+              season_name: pool.season_name,
+              pool: pool.pool_value,
+              pool_name: pool.pool_name,
+              tournament_level: pool.tournament_level,
+              color_id: pool.google_color_id,
+              session_id: sessionId,
+              total_pools: totalPools
+            })
+          });
+          const data = await response.json();
+          if (data.success) {
+            if (data.data.error) {
+              setLog(prevLog => ({
+                ...prevLog,
+                message: `Error in pool ${pool.pool_value}: ${data.data.error}`,
+                matches: allMatches
+              }));
+            } else if (Array.isArray(data.data.message) && data.data.message.length === 0) {
+              setLog(prevLog => ({
+                ...prevLog,
+                message: `No matches found for pool ${pool.pool_value} at venue ${formData.venue}`,
+                matches: allMatches
+              }));
+            } else {
+              allMatches = [...allMatches, ...data.data.message];
+              setLog({
+                message: `Completed scraping pool ${pool.tournament_level} - ${pool.pool_name} (${pool.pool_value}) for region ${region.region_name}, age group ${ageGroup.age_group_name}`,
+                matches: allMatches
+              });
+            }
+          } else {
+            setLog(prevLog => ({
+              ...prevLog,
+              message: `Error in pool ${pool.pool_value}: ${data.data?.message || 'Something went wrong.'}`,
+              matches: allMatches
+            }));
+          }
+          completedRequests++;
+          setProgress(completedRequests / totalPools * 100);
+        }
       }
       if (allMatches.length === 0) {
         setLog({
@@ -4922,7 +4961,7 @@ const App = () => {
         });
       } else {
         setLog({
-          message: `All pools scraped successfully! Found ${allMatches.length} matches`,
+          message: `All regions, age groups, and pools scraped successfully! Found ${allMatches.length} matches`,
           matches: allMatches
         });
       }
@@ -4936,6 +4975,8 @@ const App = () => {
       setIsRunning(false);
     }
   };
+
+  // Handle clearing matches
   const handleClearMatches = async () => {
     const result = await sweetalert2__WEBPACK_IMPORTED_MODULE_1___default().fire({
       title: 'Are you sure?',
@@ -4948,7 +4989,7 @@ const App = () => {
       cancelButtonText: 'Cancel'
     });
     if (result.isConfirmed) {
-      setIsClearing(true); // Start loader
+      setIsClearing(true);
       try {
         const response = await fetch(calendarScraperAjax.ajax_url, {
           method: 'POST',
@@ -4978,7 +5019,7 @@ const App = () => {
           matches: []
         });
       } finally {
-        setIsClearing(false); // Stop loader
+        setIsClearing(false);
       }
     }
   };
@@ -5055,51 +5096,6 @@ const App = () => {
               }), errors.season && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("span", {
                 className: "error-message",
                 children: errors.season
-              })]
-            }), showDropdowns && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("div", {
-              className: "form-section dropdown-row",
-              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("label", {
-                htmlFor: "region-select",
-                className: "form-label"
-              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("select", {
-                id: "region-select",
-                name: "region",
-                className: `form-select ${errors.region ? 'has-error' : ''}`,
-                value: formData.region,
-                onChange: handleInputChange,
-                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("option", {
-                  value: "",
-                  children: "-- Select Region --"
-                }), regions.map(region => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("option", {
-                  value: region.region_value,
-                  children: region.region_name
-                }, region.region_value))]
-              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("select", {
-                id: "age-group-select",
-                name: "ageGroup",
-                className: `form-select ${errors.ageGroup ? 'has-error' : ''}`,
-                value: formData.ageGroup,
-                onChange: handleInputChange,
-                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("option", {
-                  value: "",
-                  children: "-- Select Age Group --"
-                }), ageGroups.map(ageGroup => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("option", {
-                  value: ageGroup.age_group_value,
-                  children: ageGroup.age_group_name
-                }, ageGroup.age_group_value))]
-              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("select", {
-                id: "pool-select",
-                name: "pool",
-                className: `form-select ${errors.pool ? 'has-error' : ''}`,
-                value: formData.pool,
-                onChange: handleInputChange,
-                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("option", {
-                  value: "",
-                  children: "-- Select Pool --"
-                }), pools.map(pool => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("option", {
-                  value: pool.pool_value,
-                  children: [pool.tournament_level, " - $", pool.pool_name]
-                }, pool.pool_value))]
               })]
             }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("div", {
               className: "form-section",
@@ -5189,7 +5185,10 @@ const App = () => {
             })]
           })
         }), activeTab === 'sheet-colors' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)(_Colors__WEBPACK_IMPORTED_MODULE_3__["default"], {
-          levels: levels
+          season: formData.season,
+          url: formData.linkStructure,
+          regions: regions,
+          ageGroups: ageGroups
         }), activeTab === 'log-state' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)(_Logs__WEBPACK_IMPORTED_MODULE_2__["default"], {
           logInfo: logInfo
         }), activeTab === 'settings' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)(_Settings__WEBPACK_IMPORTED_MODULE_4__["default"], {})]
@@ -5237,13 +5236,41 @@ __webpack_require__.r(__webpack_exports__);
 
 
 const Colors = ({
-  levels
+  season,
+  url,
+  regions,
+  ageGroups
 }) => {
   const [googleColors, setGoogleColors] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
-  const [levelColors, setLevelColors] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({}); // Stores level_id -> google_color_id
+  const [levelColors, setLevelColors] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({});
   const [selectedLevel, setSelectedLevel] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('');
   const [availableLevels, setAvailableLevels] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
   const [loading, setLoading] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(true);
+  const [selectedRegion, setSelectedRegion] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('');
+  const [selectedAgeGroup, setSelectedAgeGroup] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('');
+  const [pools, setPools] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
+  const levels = window.calendarScraperAjax?.tournament_levels || [];
+  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
+    const fetchPools = async () => {
+      try {
+        const response = await fetch(`${calendarScraperAjax.ajax_url}?action=get_tournament_options&season=${season}&region=${selectedRegion}&age_group=${selectedAgeGroup}&_ajax_nonce=${calendarScraperAjax.nonce}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          }
+        });
+        const data = await response.json();
+        if (data.success) {
+          setPools(data.data.pools || []);
+        } else {
+          console.error('Failed to fetch pools:', data.data?.message || 'Unknown error');
+        }
+      } catch (error) {
+        console.error('Error fetching pools:', error);
+      }
+    };
+    fetchPools();
+  }, [season, selectedRegion, selectedAgeGroup]);
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
     const fetchGoogleColors = async () => {
       try {
@@ -5305,7 +5332,7 @@ const Colors = ({
           action: 'save_level_color',
           _ajax_nonce: calendarScraperAjax.nonce,
           level_id: levelID,
-          google_color_id: googleColorId // Send google_color_id instead of color
+          google_color_id: googleColorId
         })
       });
       const data = await response.json();
@@ -5398,16 +5425,81 @@ const Colors = ({
       }
     }
   };
-
-  // Helper to find hex code by google_color_id
+  const handleScrapingPools = async () => {
+    const result = await sweetalert2__WEBPACK_IMPORTED_MODULE_1___default().fire({
+      title: 'Are you sure?',
+      text: 'Do you want to scrape pools for all regions and age groups?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d63638',
+      cancelButtonColor: '#666',
+      confirmButtonText: 'Yes, scrape pools',
+      cancelButtonText: 'Cancel'
+    });
+    if (result.isConfirmed) {
+      try {
+        const response = await fetch(calendarScraperAjax.ajax_url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: new URLSearchParams({
+            action: 'run_pools_scraping',
+            season: season,
+            link_structure: url,
+            _ajax_nonce: calendarScraperAjax.nonce
+          })
+        });
+        const data = await response.json();
+        if (data.success) {} else {
+          console.error('Failed to scrape pools:', data.data?.message || 'Unknown error');
+        }
+      } catch (error) {
+        console.error('Error scraping pools:', error);
+      }
+    }
+  };
   const getHexCode = googleColorId => {
     const colorObj = googleColors.find(color => color.google_color_id === googleColorId);
-    return colorObj ? colorObj.hex_code : '#000000'; // Fallback color
+    return colorObj ? colorObj.hex_code : '#000000';
   };
   return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsxs)("div", {
     id: "sheet-colors",
     className: "tab-section",
-    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("div", {
+    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsxs)("div", {
+      className: "form-section dropdown-row",
+      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("label", {
+        htmlFor: "region-select",
+        className: "form-label",
+        children: "Regions & Groups:"
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsxs)("select", {
+        id: "region-select",
+        name: "region",
+        className: "form-select",
+        value: selectedRegion,
+        onChange: e => setSelectedRegion(e.target.value),
+        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("option", {
+          value: "",
+          children: "-- Select Region --"
+        }), regions.map(region => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("option", {
+          value: region.region_value,
+          children: region.region_name
+        }, region.region_value))]
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsxs)("select", {
+        id: "age-group-select",
+        name: "ageGroup",
+        className: "form-select",
+        value: selectedAgeGroup,
+        onChange: e => setSelectedAgeGroup(e.target.value),
+        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("option", {
+          value: "",
+          children: "-- Select Age Group --"
+        }), ageGroups.map(ageGroup => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("option", {
+          value: ageGroup.age_group_value,
+          children: ageGroup.age_group_name
+        }, ageGroup.age_group_value))]
+      })]
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("div", {
       className: "form-section",
       children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsxs)("div", {
         className: "form-control-group",
@@ -5483,11 +5575,24 @@ const Colors = ({
           }, levelID);
         })
       })]
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("button", {
-      type: "button",
-      className: "button button-secondary",
-      onClick: handleClearAll,
-      children: "Clear All Colors"
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsxs)("div", {
+      className: "form-section button-group",
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      },
+      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("button", {
+        type: "button",
+        className: "button button-primary",
+        onClick: handleScrapingPools,
+        children: "Run Pools Scraping"
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("button", {
+        type: "button",
+        className: "button button-secondary",
+        onClick: handleClearAll,
+        children: "Clear All Colors"
+      })]
     })]
   });
 };

@@ -494,6 +494,7 @@
 .dropdown-row .form-label {
   display: block;
   margin-bottom: 5px;
+  margin-top: 15px;
 }
 .dropdown-row .form-select {
   width: 200px;

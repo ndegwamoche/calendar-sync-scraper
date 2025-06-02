@@ -8,36 +8,27 @@ import './App.scss';
 const App = () => {
     const [activeTab, setActiveTab] = useState('main');
     const [isRunning, setIsRunning] = useState(false);
-    const [isClearing, setIsClearing] = useState(false); // Added for loader
+    const [isClearing, setIsClearing] = useState(false);
     const [progress, setProgress] = useState(0);
     const [log, setLog] = useState({ message: '', matches: [] });
     const [formData, setFormData] = useState({
         season: '42024',
         linkStructure: 'https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#4,{season},{pool},{group},{region},,,,',
         venue: '',
-        region: '4004',
-        ageGroup: '4006',
-        pool: '14822',
     });
     const [errors, setErrors] = useState({});
-    const [showDropdowns, setShowDropdowns] = useState(false);
-    const [pools, setPools] = useState([]);
     const seasons = window.calendarScraperAjax?.seasons || [];
+    const [logInfo, setLogInfo] = useState([]);
     const regions = window.calendarScraperAjax?.regions || [];
     const ageGroups = window.calendarScraperAjax?.age_groups || [];
-    const levels = window.calendarScraperAjax?.tournament_levels || [];
-    const [logInfo, setLogInfo] = useState([]);
 
-    // Validation function
     const validateForm = () => {
         const newErrors = {};
 
-        // Validate Season
         if (!formData.season) {
             newErrors.season = 'Please select a season.';
         }
 
-        // Validate Link Structure
         const linkStructureRegex = /^https:\/\/www\.bordtennisportalen\.dk\/DBTU\/HoldTurnering\/Stilling\/#4,\{season\},\{pool\},\{group\},\{region\},,,,$/;
         if (!formData.linkStructure) {
             newErrors.linkStructure = 'Link structure is required.';
@@ -45,7 +36,6 @@ const App = () => {
             newErrors.linkStructure = 'Link structure must match the expected format.';
         }
 
-        // Validate Venue
         if (!formData.venue.trim()) {
             newErrors.venue = 'Venue name is required.';
         }
@@ -54,7 +44,6 @@ const App = () => {
         return Object.keys(newErrors).length === 0;
     };
 
-    // Handle input changes
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({
@@ -63,33 +52,12 @@ const App = () => {
         }));
         if (errors[name]) {
             setErrors((prev) => ({
-                ...prevErrors,
+                ...prev,
                 [name]: '',
             }));
         }
     };
 
-    useEffect(() => {
-        if (formData.season) {
-            fetch(`${calendarScraperAjax.ajax_url}?action=get_tournament_options&season=${formData.season}&region=${formData.region}&age_group=${formData.ageGroup}&_ajax_nonce=${calendarScraperAjax.nonce}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-            })
-                .then((response) => response.json())
-                .then((data) => {
-                    if (data.success) {
-                        setPools(data.data.pools || []);
-                    }
-                })
-                .catch((error) => console.error('Error fetching pools:', error));
-        } else {
-            setPools([]);
-        }
-    }, [formData.season, formData.region, formData.ageGroup]);
-
-    // Fetch logInfo when the "Log State" tab is activated
     useEffect(() => {
         if (activeTab === 'log-state') {
             const fetchLogInfo = async () => {
@@ -121,11 +89,11 @@ const App = () => {
                         setLogInfo(formattedLogs);
                     } else {
                         console.error('Failed to fetch log info:', data.data?.message || 'Unknown error');
-                        setLogInfo([]); // Clear logInfo on error
+                        setLogInfo([]);
                     }
                 } catch (error) {
                     console.error('Error fetching log info:', error);
-                    setLogInfo([]); // Clear logInfo on error
+                    setLogInfo([]);
                 }
             };
 
@@ -133,90 +101,161 @@ const App = () => {
         }
     }, [activeTab]);
 
+    // Handle scraper run for all regions and age groups
     const handleRunScraper = async () => {
         if (!validateForm()) {
             setLog({ message: 'Please fix the errors in the form.', matches: [] });
             return;
         }
 
-        if (pools.length === 0) {
-            setLog({ message: 'No pools available to scrape.', matches: [] });
-            return;
+        // Create combinations of regions and age groups
+        const regionAgeGroupCombinations = [];
+        for (const region of regions) {
+            for (const ageGroup of ageGroups) {
+                regionAgeGroupCombinations.push({ region, ageGroup });
+            }
+        }
+
+        // Confirmation for large scraping tasks
+        const totalCombinations = regionAgeGroupCombinations.length;
+        if (totalCombinations > 10) {
+            const result = await Swal.fire({
+                title: 'Large Scraping Task',
+                text: `You are about to scrape ${totalCombinations} region and age group combinations. This may take a while. Continue?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, proceed',
+                cancelButtonText: 'Cancel',
+            });
+
+            if (!result.isConfirmed) {
+                setLog({ message: 'Scraping cancelled by user.', matches: [] });
+                return;
+            }
         }
 
         setIsRunning(true);
-        setLog({ message: 'Starting scraper...', matches: [] });
+        setLog({ message: 'Starting scraper for all regions and age groups...', matches: [] });
         setProgress(0);
 
         let allMatches = [];
         let completedRequests = 0;
         const sessionId = Date.now().toString();
+        let totalPools = 0;
 
         try {
-            for (const pool of pools) {
+            // Loop through all regions and age groups
+            for (const { region, ageGroup } of regionAgeGroupCombinations) {
                 setLog(prevLog => ({
                     ...prevLog,
-                    message: `Scraping pool ${pool.tournament_level} - ${pool.pool_name} (${pool.pool_value})...`,
+                    message: `Fetching pools for region ${region.region_name} (${region.region_value}) and age group ${ageGroup.age_group_name} (${ageGroup.age_group_value})...`,
                     matches: allMatches,
                 }));
 
-                const response = await fetch(calendarScraperAjax.ajax_url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: new URLSearchParams({
-                        action: 'run_calendar_scraper',
-                        _ajax_nonce: calendarScraperAjax.nonce,
-                        season: formData.season,
-                        link_structure: formData.linkStructure,
-                        venue: formData.venue,
-                        region: formData.region,
-                        age_group: formData.ageGroup,
-                        age_group_name: pool.age_group_name,
-                        region_name: pool.region_name,
-                        season_name: pool.season_name,
-                        pool: pool.pool_value,
-                        pool_name: pool.pool_name,
-                        tournament_level: pool.tournament_level,
-                        color_id: pool.google_color_id,
-                        session_id: sessionId,
-                        total_pools: pools.length
-                    }),
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    if (data.data.error) {
-                        setLog(prevLog => ({
-                            ...prevLog,
-                            message: `Error in pool ${pool.pool_value}: ${data.data.error}`,
-                            matches: allMatches,
-                        }));
-                    } else if (Array.isArray(data.data.message) && data.data.message.length === 0) {
-                        setLog(prevLog => ({
-                            ...prevLog,
-                            message: `No matches found for pool ${pool.pool_value} at venue ${formData.venue}`,
-                            matches: allMatches,
-                        }));
-                    } else {
-                        allMatches = [...allMatches, ...data.data.message];
-                        setLog({
-                            message: `Completed scraping pool ${pool.tournament_level} - ${pool.pool_name} (${pool.pool_value})`,
-                            matches: allMatches,
-                        });
+                // Fetch pools for the current region and age group
+                const response = await fetch(
+                    `${calendarScraperAjax.ajax_url}?action=get_tournament_options&season=${formData.season}&region=${region.region_value}&age_group=${ageGroup.age_group_value}&_ajax_nonce=${calendarScraperAjax.nonce}`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
                     }
+                );
+                const poolData = await response.json();
+
+                let currentPools = [];
+                if (poolData.success) {
+                    currentPools = poolData.data.pools || [];
+                    totalPools += currentPools.length;
                 } else {
                     setLog(prevLog => ({
                         ...prevLog,
-                        message: `Error in pool ${pool.pool_value}: ${data.data?.message || 'Something went wrong.'}`,
+                        message: `Failed to fetch pools for region ${region.region_name} (${region.region_value}), age group ${ageGroup.age_group_name}: ${poolData.data?.message || 'Unknown error'}`,
                         matches: allMatches,
                     }));
+                    continue;
                 }
 
-                completedRequests++;
-                setProgress((completedRequests / pools.length) * 100);
+                if (currentPools.length === 0) {
+                    setLog(prevLog => ({
+                        ...prevLog,
+                        message: `No pools found for region ${region.region_name} (${region.region_value}), age group ${ageGroup.age_group_name}`,
+                        matches: allMatches,
+                    }));
+                    completedRequests++;
+                    setProgress((completedRequests / totalCombinations) * 100);
+                    continue;
+                }
+
+                // Scrape each pool for the current region and age group
+                for (const pool of currentPools) {
+                    setLog(prevLog => ({
+                        ...prevLog,
+                        message: `Scraping pool ${pool.tournament_level} - ${pool.pool_name} (${pool.pool_value}) for region ${region.region_name}, age group ${ageGroup.age_group_name}...`,
+                        matches: allMatches,
+                    }));
+
+                    const response = await fetch(calendarScraperAjax.ajax_url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: new URLSearchParams({
+                            action: 'run_calendar_scraper',
+                            _ajax_nonce: calendarScraperAjax.nonce,
+                            season: formData.season,
+                            link_structure: formData.linkStructure,
+                            venue: formData.venue,
+                            region: region.region_value,
+                            age_group: ageGroup.age_group_value,
+                            age_group_name: ageGroup.age_group_name,
+                            region_name: region.region_name,
+                            season_name: pool.season_name,
+                            pool: pool.pool_value,
+                            pool_name: pool.pool_name,
+                            tournament_level: pool.tournament_level,
+                            color_id: pool.google_color_id,
+                            session_id: sessionId,
+                            total_pools: totalPools,
+                        }),
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        if (data.data.error) {
+                            setLog(prevLog => ({
+                                ...prevLog,
+                                message: `Error in pool ${pool.pool_value}: ${data.data.error}`,
+                                matches: allMatches,
+                            }));
+                        } else if (Array.isArray(data.data.message) && data.data.message.length === 0) {
+                            setLog(prevLog => ({
+                                ...prevLog,
+                                message: `No matches found for pool ${pool.pool_value} at venue ${formData.venue}`,
+                                matches: allMatches,
+                            }));
+                        } else {
+                            allMatches = [...allMatches, ...data.data.message];
+                            setLog({
+                                message: `Completed scraping pool ${pool.tournament_level} - ${pool.pool_name} (${pool.pool_value}) for region ${region.region_name}, age group ${ageGroup.age_group_name}`,
+                                matches: allMatches,
+                            });
+                        }
+                    } else {
+                        setLog(prevLog => ({
+                            ...prevLog,
+                            message: `Error in pool ${pool.pool_value}: ${data.data?.message || 'Something went wrong.'}`,
+                            matches: allMatches,
+                        }));
+                    }
+
+                    completedRequests++;
+                    setProgress((completedRequests / totalPools) * 100);
+                }
             }
 
             if (allMatches.length === 0) {
@@ -226,7 +265,7 @@ const App = () => {
                 });
             } else {
                 setLog({
-                    message: `All pools scraped successfully! Found ${allMatches.length} matches`,
+                    message: `All regions, age groups, and pools scraped successfully! Found ${allMatches.length} matches`,
                     matches: allMatches,
                 });
             }
@@ -241,6 +280,7 @@ const App = () => {
         }
     };
 
+    // Handle clearing matches
     const handleClearMatches = async () => {
         const result = await Swal.fire({
             title: 'Are you sure?',
@@ -254,7 +294,7 @@ const App = () => {
         });
 
         if (result.isConfirmed) {
-            setIsClearing(true); // Start loader
+            setIsClearing(true);
             try {
                 const response = await fetch(calendarScraperAjax.ajax_url, {
                     method: 'POST',
@@ -273,7 +313,7 @@ const App = () => {
             } catch (error) {
                 setLog({ message: `Error clearing matches: ${error.message}`, matches: [] });
             } finally {
-                setIsClearing(false); // Stop loader
+                setIsClearing(false);
             }
         }
     };
@@ -349,56 +389,6 @@ const App = () => {
                                     </div>
                                     {errors.season && <span className="error-message">{errors.season}</span>}
                                 </div>
-
-                                {showDropdowns && (
-                                    <div className="form-section dropdown-row">
-                                        <label htmlFor="region-select" className="form-label"></label>
-                                        <select
-                                            id="region-select"
-                                            name="region"
-                                            className={`form-select ${errors.region ? 'has-error' : ''}`}
-                                            value={formData.region}
-                                            onChange={handleInputChange}
-                                        >
-                                            <option value="">-- Select Region --</option>
-                                            {regions.map((region) => (
-                                                <option key={region.region_value} value={region.region_value}>
-                                                    {region.region_name}
-                                                </option>
-                                            ))}
-                                        </select>
-
-                                        <select
-                                            id="age-group-select"
-                                            name="ageGroup"
-                                            className={`form-select ${errors.ageGroup ? 'has-error' : ''}`}
-                                            value={formData.ageGroup}
-                                            onChange={handleInputChange}
-                                        >
-                                            <option value="">-- Select Age Group --</option>
-                                            {ageGroups.map((ageGroup) => (
-                                                <option key={ageGroup.age_group_value} value={ageGroup.age_group_value}>
-                                                    {ageGroup.age_group_name}
-                                                </option>
-                                            ))}
-                                        </select>
-
-                                        <select
-                                            id="pool-select"
-                                            name="pool"
-                                            className={`form-select ${errors.pool ? 'has-error' : ''}`}
-                                            value={formData.pool}
-                                            onChange={handleInputChange}
-                                        >
-                                            <option value="">-- Select Pool --</option>
-                                            {pools.map((pool) => (
-                                                <option key={pool.pool_value} value={pool.pool_value}>
-                                                    {pool.tournament_level} - ${pool.pool_name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
 
                                 <div className="form-section">
                                     <div className="form-control-group">
@@ -479,7 +469,7 @@ const App = () => {
                     )}
 
                     {activeTab === 'sheet-colors' && (
-                        <Colors levels={levels} />
+                        <Colors season={formData.season} url={formData.linkStructure} regions={regions} ageGroups={ageGroups} />
                     )}
 
                     {activeTab === 'log-state' && (

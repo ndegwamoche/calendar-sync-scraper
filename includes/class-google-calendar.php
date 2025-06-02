@@ -86,22 +86,60 @@ class Google_Calendar_Sync
             try {
                 $startDateTime = $this->parseTidToDateTime($match['tid']);
 
-                // Assuming match lasts 2 hours; adjust as needed
                 $endDateTime = (new \DateTime($startDateTime))->modify('+3 hours')->format(\DateTime::RFC3339);
 
-                $description = "$region_name $season_name\n\n" .
-                    "Serie 1 Pulje 1\n" .
-                    "https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#3,{$season},{$pool},{$ageGroup},{$region},{$match['hjemmehold_id']},,4203\n\n" .
-                    "{$match['hjemmehold']}\n" .
-                    "https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#2,{$season},{$pool},{$ageGroup},{$region},,,4203\n" .
-                    "{$match['udehold']}, {$match['spillested']}\n\n" .
-                    "Resultat: {$match['resultat']}\n" .
-                    "Point: {$match['point']}\n\n" .
-                    "Kampdetaljer\n" .
-                    "https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#5,{$season},{$pool},{$ageGroup},{$region},,{$match['no']},4203";
+                $description = "<strong>{$region_name} {$season_name}</strong><br>" .
+                    "<a href='https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#3,{$season},{$pool},{$ageGroup},{$region},{$match['hjemmehold_id']},,4203'>$tournament_level $pool_name</a><br><br>" .
+
+                    "<a href='https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#2,{$season},{$pool},{$ageGroup},{$region},,,4203'>{$match['hjemmehold']}</a><br>" .
+                    "{$match['udehold']}, {$match['spillested']}<br><br>" .
+
+                    "<strong>Resultat: {$match['resultat']}<br>" .
+                    "Point: {$match['point']}</strong><br><br>" .
+
+                    "<a href='https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#5,{$season},{$pool},{$ageGroup},{$region},,{$match['no']},4203'>Kampdetaljer</a>";
+
+                switch ($color_id) {
+                    case '1':  // Lavender
+                        $icon = '🟪';
+                        break;
+                    case '2':  // Sage
+                        $icon = '🟩';
+                        break;
+                    case '3':  // Grape
+                        $icon = '🟪';
+                        break;
+                    case '4':  // Flamingo
+                        $icon = '🟥';
+                        break;
+                    case '5':  // Banana
+                        $icon = '🟨';
+                        break;
+                    case '6':  // Tangerine
+                        $icon = '🟧';
+                        break;
+                    case '7':  // Peacock
+                        $icon = '🟦';
+                        break;
+                    case '8':  // Graphite
+                        $icon = '⬛';
+                        break;
+                    case '9':  // Blueberry
+                        $icon = '🟦';
+                        break;
+                    case '10': // Basil
+                        $icon = '🟩';
+                        break;
+                    case '11': // Tomato
+                        $icon = '🟥';
+                        break;
+                    default:
+                        $icon = '⬜'; // Default white square
+                        break;
+                }
 
                 $event = new \Google_Service_Calendar_Event([
-                    'summary' => "$age_group_name $tournament_level $pool_name",
+                    'summary' => "$icon $age_group_name $tournament_level $pool_name",
                     'location' => $match['spillested'],
                     'description' => $description,
                     'start' => ['dateTime' => $startDateTime, 'timeZone' => 'Europe/Copenhagen'],
