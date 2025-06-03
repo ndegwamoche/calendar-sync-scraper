@@ -72,9 +72,8 @@ class DB_Init
             age_group_id BIGINT(20) UNSIGNED NOT NULL,
             google_color_id INT DEFAULT NULL,
             PRIMARY KEY (id),
-            UNIQUE KEY level_name (level_name)
+            UNIQUE KEY unique_level (level_name, season_id, region_id, age_group_id)
         ) $charset_collate;";
-        dbDelta($sql);
 
         // Tournament Pools table
         $sql = "CREATE TABLE IF NOT EXISTS {$this->tournament_pools_table} (

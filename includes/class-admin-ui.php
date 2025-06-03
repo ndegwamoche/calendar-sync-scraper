@@ -28,6 +28,10 @@ class Admin_UI
         add_action('wp_ajax_run_calendar_scraper', [$this->scraper, 'run_scraper']);
         add_action('wp_ajax_get_tournament_options', [$this, 'get_tournament_options']);
         add_action('wp_ajax_get_log_info', [$this->logger, 'get_log_info']);
+        add_action('wp_ajax_get_log_info', [$this->logger, 'complete_log']);
+        add_action('wp_ajax_complete_scraper_log', [$this->logger, 'complete_scraper_log']);
+        add_action('wp_ajax_get_tournament_levels_by_region_age', [$this->data_loader, 'get_tournament_levels_by_region_age']);
+        add_action('wp_ajax_get_all_tournament_levels', [$this->data_loader, 'get_all_tournament_levels']);
         add_action('wp_ajax_save_level_color', [$this->data_loader, 'save_level_color']);
         add_action('wp_ajax_get_level_colors', [$this->data_loader, 'get_level_colors']);
         add_action('wp_ajax_remove_level_color', [$this->data_loader, 'remove_level_color']);
@@ -36,7 +40,13 @@ class Admin_UI
         add_action('wp_ajax_save_google_credentials', [$this->google_calendar, 'save_google_credentials']);
         add_action('wp_ajax_get_google_credentials', [$this->google_calendar, 'get_google_credentials']);
         add_action('wp_ajax_clear_google_calendar_events', [$this->google_calendar, 'clear_google_calendar_events']);
-        add_action('wp_ajax_run_pools_scraping', [$this->scraper, 'run_pools_scraping']);
+
+        //pools scrapping
+        add_action('wp_ajax_fetch_page_html', [$this->scraper, 'fetch_page_html']);
+        add_action('wp_ajax_check_tournament_level', [$this->scraper, 'check_tournament_level']);
+        add_action('wp_ajax_check_tournament_pool', [$this->scraper, 'check_tournament_pool']);
+        add_action('wp_ajax_insert_tournament_level', [$this->scraper, 'insert_tournament_level']);
+        add_action('wp_ajax_insert_tournament_pool', [$this->scraper, 'insert_tournament_pool']);
     }
 
     public function register_admin_page()

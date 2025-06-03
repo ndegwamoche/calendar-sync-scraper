@@ -23,6 +23,8 @@ class Scraper
 
     public function run_scraper()
     {
+        set_time_limit(0); // Unlimited execution time
+
         register_shutdown_function(function () use (&$log_id) {
             $error = error_get_last();
             if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
@@ -69,15 +71,35 @@ class Scraper
             $log_data = get_transient($transient_key);
 
             if ($log_data === false) {
-                // Start new log for the session
-                $log_id = $this->logger->start_log($season, $region, $ageGroup, 'all_pools');
-                $log_data = [
-                    'log_id' => $log_id,
-                    'total_matches' => 0,
-                    'messages' => ["Searching venue: $venue"],
-                    'request_count' => 0,
-                    'total_pools' => $total_pools,
-                ];
+                // Check database for an existing log with the session_id
+                $existing_log = $this->wpdb->get_row(
+                    $this->wpdb->prepare(
+                        "SELECT id, total_matches, error_message FROM {$this->wpdb->prefix}cal_sync_logs WHERE session_id = %s LIMIT 1",
+                        $session_id
+                    )
+                );
+
+                if ($existing_log) {
+                    $log_id = $existing_log->id;
+                    $messages = $existing_log->error_message ? unserialize($existing_log->error_message) : ["Resuming session $session_id for venue: $venue"];
+                    $log_data = [
+                        'log_id' => $log_id,
+                        'total_matches' => $existing_log->total_matches ? (int)$existing_log->total_matches : 0,
+                        'messages' => is_array($messages) ? $messages : [$messages], // Ensure messages is an array
+                        'request_count' => 0,
+                        'total_pools' => $total_pools,
+                    ];
+                } else {
+                    $log_id = $this->logger->start_log($season, $region, $ageGroup, 'all_pools', $session_id);
+                    $log_data = [
+                        'log_id' => $log_id,
+                        'total_matches' => 0,
+                        'messages' => ["Starting session $session_id, searching venue: $venue"],
+                        'request_count' => 0,
+                        'total_pools' => $total_pools,
+                    ];
+                }
+                set_transient($transient_key, $log_data, 3600);
             } else {
                 $log_id = $log_data['log_id'];
             }
@@ -100,7 +122,7 @@ class Scraper
                 $response['data']['message'] = $matches['error'];
             } else {
                 $log_data['total_matches'] += $total_matches;
-                $log_data['messages'][] = "Pool $tournament_level - $pool_name ($pool): Found $total_matches matches";
+                $log_data['messages'][] = "Season: $season_name, Region: $region_name,  Age Group: $age_group_name -> Pool $tournament_level - $pool_name ($pool): Found $total_matches matches";
                 $response['success'] = true;
                 $response['data']['message'] = $matches;
 
@@ -116,10 +138,10 @@ class Scraper
             set_transient($transient_key, $log_data, 3600); // Store for 1 hour
 
             // Complete log if all pools are processed
-            if ($log_data['request_count'] >= $log_data['total_pools']) {
-                $this->logger->complete_log($log_id);
-                delete_transient($transient_key); // Clean up
-            }
+            // if ($log_data['request_count'] >= $log_data['total_pools']) {
+            //     $this->logger->complete_log($log_id);
+            //     delete_transient($transient_key); // Clean up
+            // }
 
             wp_send_json($response);
         } catch (Exception $e) {
@@ -127,7 +149,7 @@ class Scraper
             $this->logger->log('error', htmlspecialchars($e->getMessage()));
             if (isset($log_id)) {
                 $log_data['messages'][] = $response['data']['message'];
-                $log_message = implode('; ', $log_data['messages']);
+                $log_message = implode('\n', $log_data['messages']);
                 $this->logger->update_log($log_id, $log_data['total_matches'], $log_message, 'failed');
                 set_transient($transient_key, $log_data, 3600);
             }
@@ -148,7 +170,7 @@ class Scraper
     {
         try {
             // Set up ChromeDriver connection
-            $serverUrl = 'http://localhost:56198';
+            $serverUrl = 'http://localhost:9515';
 
             $capabilities = DesiredCapabilities::chrome();
             $capabilities->setCapability('goog:chromeOptions', [
@@ -233,30 +255,26 @@ class Scraper
         }
     }
 
-    /**
-     * Fetches and parses tournament levels and pools from the specified URL using a headless browser.
-     *
-     * @param string $url The URL to scrape, containing placeholders for season, agegroup, and region.
-     * @param string $season The season value to replace in the URL.
-     * @param string $ageGroup The age group value to replace in the URL.
-     * @param string $region The region value to replace in the URL.
-     * @return array JSON-encodable array of tournament levels and their pools, or error message.
-     */
-    public function scrape_tournament_levels_and_pools($url, $season, $ageGroup, $region)
+    public function fetch_page_html()
     {
-        $url = "https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#1,{season},,{group},{region},,,,";
+        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
+
+        $season = sanitize_text_field($_POST['season']);
+        $ageGroup = sanitize_text_field($_POST['age_group']);
+        $region = sanitize_text_field($_POST['region']);
+        $url = sanitize_text_field($_POST['link_structure']);
+
+        $messages = [];
 
         try {
-            // Replace placeholders in the URL
             $url = str_replace(
                 ['{season}', '{group}', '{region}'],
-                [42024, 4006, 4004],
-                $url
+                [$season, $ageGroup, $region],
+                "https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#1,{season},,{group},{region},,,,"
             );
+            $messages[] = "Generated URL: $url";
 
-            // Set up ChromeDriver connection
-            $serverUrl = 'http://localhost:56198';
-
+            $serverUrl = 'http://localhost:9515';
             $capabilities = DesiredCapabilities::chrome();
             $capabilities->setCapability('goog:chromeOptions', [
                 'args' => [
@@ -268,166 +286,164 @@ class Scraper
                 ]
             ]);
 
-            // Start ChromeDriver
+            $messages[] = "Initializing WebDriver...";
             $driver = RemoteWebDriver::create($serverUrl, $capabilities);
-
-            // Navigate to the URL and wait for page to load
+            $messages[] = "Navigating to URL...";
             $driver->get($url);
             $driver->manage()->timeouts()->implicitlyWait(10);
 
             try {
+                $messages[] = "Fetching page source...";
                 $html = $driver->getPageSource();
             } catch (UnexpectedAlertOpenException $e) {
+                $messages[] = "Unexpected alert encountered: " . $e->getMessage();
                 $alert = $driver->switchTo()->alert();
-                $alertText = $alert->getText();
-                $this->logger->log('info', "Alert encountered: $alertText");
                 $alert->dismiss();
                 $html = $driver->getPageSource();
             } finally {
+                $messages[] = "Closing WebDriver...";
                 $driver->quit();
             }
 
-            // Initialize DomCrawler with the rendered HTML
-            $crawler = new Crawler($html);
-
-            // Filter the table.selectgroup
-            $tableCrawler = $crawler->filter('table.selectgroup');
-
-            // echo $tableCrawler->html();
-            // exit;
-
-            if ($tableCrawler->count() === 0) {
-                return ['error' => 'No selectgroup table found on the page'];
-            }
-
-            $tournamentLevels = [];
-            $currentLevel = null;
-
-            $tableCrawler->filter('tr')->each(function (Crawler $row) use (&$tournamentLevels, &$currentLevel) {
-                // Log row class for debugging
-                $rowClass = $row->attr('class') ?: 'no-class';
-                $this->logger->log('debug', "Processing row with class: $rowClass");
-
-                // Check if row is a divisionrow (tournament level)
-                if ($row->matches('.divisionrow')) {
-                    $levelName = $row->filter('h3')->count() ? trim($row->filter('h3')->text()) : 'Unknown Level';
-                    $currentLevel = [
-                        'level_name' => $levelName,
-                        'pools' => []
-                    ];
-                    $tournamentLevels[] = $currentLevel;
-                    $this->logger->log('info', "Found tournament level: $levelName");
-                }
-                // Check if row is a grouprow (pool)
-                elseif ($row->matches('.grouprow') && $currentLevel !== null) {
-                    $poolLink = $row->filter('td a');
-                    if ($poolLink->count()) {
-                        $poolName = trim($poolLink->text());
-                        $onclick = $poolLink->attr('onclick') ?: '';
-                        $poolId = '';
-
-                        // Extract pool ID from onclick attribute
-                        if ($onclick && preg_match("/ShowStanding\('[^']*',\s*'[^']*',\s*'(\d+)'/", $onclick, $matches)) {
-                            $poolId = $matches[1];
-                            $this->logger->log('info', "Found pool: $poolName with ID: $poolId");
-                        } else {
-                            $this->logger->log('warning', "Could not extract pool ID from onclick: $onclick");
-                        }
-
-                        $currentLevel['pools'][] = [
-                            'pool_id' => $poolId,
-                            'pool_name' => $poolName
-                        ];
-                    } else {
-                        $this->logger->log('warning', 'No <a> tag found in grouprow');
-                    }
-                }
-            });
-            print_r($tournamentLevels);
-            exit;
-
-            // Filter out levels with no pools
-            $tournamentLevels = array_filter($tournamentLevels, function ($level) {
-                return !empty($level['pools']);
-            });
-
-
-
-            // Log success
-            $this->logger->log('info', "Successfully scraped " . count($tournamentLevels) . " tournament levels from $url");
-
-            return array_values($tournamentLevels);
+            wp_send_json([
+                'success' => true,
+                'html' => $html,
+                'messages' => $messages
+            ]);
         } catch (Exception $e) {
-            $errorMessage = 'Error scraping tournament levels and pools: ' . htmlspecialchars($e->getMessage());
-            $this->logger->log('error', $errorMessage);
-            return ['error' => $errorMessage];
+            $errorMessage = 'Error fetching page HTML: ' . htmlspecialchars($e->getMessage());
+            $messages[] = $errorMessage;
+            wp_send_json([
+                'success' => false,
+                'error' => $errorMessage,
+                'messages' => $messages
+            ]);
         }
     }
 
-    /**
-     * Loops through regions and age groups from the database and scrapes tournament levels and pools.
-     *
-     * @param string $season The season to scrape data for.
-     * @param string $url The URL template for scraping, containing placeholders for season, agegroup, and region.
-     * @return array JSON-encodable array of results or error message.
-     */
-    public function run_pools_scraping()
+    public function check_tournament_level()
     {
-        $season = sanitize_text_field($_POST['season']);
-        $url = sanitize_text_field($_POST['link_structure']);
+        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
 
-        try {
-            // Fetch regions from wp_cal_sync_regions
-            $regions = $this->wpdb->get_results("SELECT region_value, region_name FROM {$this->wpdb->prefix}cal_sync_regions", ARRAY_A);
-            if (empty($regions)) {
-                throw new Exception('No regions found in wp_cal_sync_regions table.');
-            }
+        $level_name = sanitize_text_field($_POST['level_name']);
+        $season_id = sanitize_text_field($_POST['season_id']);
+        $region_id = sanitize_text_field($_POST['region_id']);
+        $age_group_id = sanitize_text_field($_POST['age_group_id']);
 
-            // Fetch age groups from wp_cal_sync_age_groups
-            $age_groups = $this->wpdb->get_results("SELECT age_group_value, age_group_name FROM {$this->wpdb->prefix}cal_sync_age_groups", ARRAY_A);
-            if (empty($age_groups)) {
-                throw new Exception('No age groups found in wp_cal_sync_age_groups table.');
-            }
+        $existingLevel = $this->wpdb->get_row(
+            $this->wpdb->prepare(
+                "SELECT id FROM {$this->wpdb->prefix}cal_sync_tournament_levels 
+            WHERE level_name = %s 
+            AND season_id = %s 
+            AND region_id = %s 
+            AND age_group_id = %s",
+                $level_name,
+                $season_id,
+                $region_id,
+                $age_group_id
+            )
+        );
 
-            $results = [];
-            $errors = [];
+        wp_send_json([
+            'success' => true,
+            'exists' => !empty($existingLevel),
+            'level_id' => $existingLevel ? $existingLevel->id : null,
+            'error' => $this->wpdb->last_error
+        ]);
+    }
 
-            // Loop through each region and age group
-            foreach ($regions as $region) {
-                foreach ($age_groups as $age_group) {
-                    $region_value = $region['region_value'];
-                    $age_group_value = $age_group['age_group_value'];
+    public function insert_tournament_level()
+    {
+        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
 
-                    // Scrape tournament levels and pools
-                    $data = $this->scrape_tournament_levels_and_pools($url, $season, $age_group_value, $region_value);
+        $level_name = sanitize_text_field($_POST['level_name']);
+        $season_id = sanitize_text_field($_POST['season_id']);
+        $region_id = sanitize_text_field($_POST['region_id']);
+        $age_group_id = sanitize_text_field($_POST['age_group_id']);
+        $google_color_id = '0';
 
-                    if (isset($data['error'])) {
-                        $errors[] = "Error for region {$region['region_name']} ({$region_value}) and age group {$age_group['age_group_name']} ({$age_group_value}): {$data['error']}";
-                        continue;
-                    }
+        $this->wpdb->insert(
+            "{$this->wpdb->prefix}cal_sync_tournament_levels",
+            [
+                'level_name' => $level_name,
+                'season_id' => $season_id,
+                'region_id' => $region_id,
+                'age_group_id' => $age_group_id,
+                'google_color_id' => $google_color_id
+            ],
+            ['%s', '%s', '%s', '%s', '%s']
+        );
 
-                    print_r($data);
-                    exit;
-                }
-            }
+        wp_send_json([
+            'success' => $this->wpdb->insert_id !== false,
+            'level_id' => $this->wpdb->insert_id,
+            'error' => $this->wpdb->last_error
+        ]);
+    }
 
-            // Log any errors
-            if (!empty($errors)) {
-                $this->logger->log('error', implode('; ', $errors));
-            }
+    public function check_tournament_pool()
+    {
+        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
 
-            // Log success
-            $this->logger->log('info', "Completed scraping for season $season. Processed " . count($results) . " tournament levels.");
+        $tournament_level = sanitize_text_field($_POST['tournament_level']);
+        $pool_value = sanitize_text_field($_POST['pool_value']);
+        $season_id = sanitize_text_field($_POST['season_id']);
+        $region_id = sanitize_text_field($_POST['region_id']);
+        $age_group_id = sanitize_text_field($_POST['age_group_id']);
 
-            return [
-                'success' => true,
-                'data' => $results,
-                'errors' => $errors
-            ];
-        } catch (Exception $e) {
-            $errorMessage = 'Error scraping all regions and age groups: ' . htmlspecialchars($e->getMessage());
-            $this->logger->log('error', $errorMessage);
-            return ['success' => false, 'data' => [], 'errors' => [$errorMessage]];
-        }
+        $existingPool = $this->wpdb->get_var(
+            $this->wpdb->prepare(
+                "SELECT COUNT(*) FROM {$this->wpdb->prefix}cal_sync_tournament_pools 
+            WHERE tournament_level = %s 
+            AND pool_value = %s 
+            AND season_id = %s 
+            AND region_id = %s 
+            AND age_group_id = %s",
+                $tournament_level,
+                $pool_value,
+                $season_id,
+                $region_id,
+                $age_group_id
+            )
+        );
+
+        wp_send_json([
+            'success' => true,
+            'exists' => $existingPool > 0,
+            'error' => $this->wpdb->last_error
+        ]);
+    }
+
+    public function insert_tournament_pool()
+    {
+        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
+
+        $tournament_level = sanitize_text_field($_POST['tournament_level']);
+        $pool_name = sanitize_text_field($_POST['pool_name']);
+        $pool_value = sanitize_text_field($_POST['pool_value']);
+        $is_playoff = intval($_POST['is_playoff']);
+        $season_id = sanitize_text_field($_POST['season_id']);
+        $region_id = sanitize_text_field($_POST['region_id']);
+        $age_group_id = sanitize_text_field($_POST['age_group_id']);
+
+        $this->wpdb->insert(
+            "{$this->wpdb->prefix}cal_sync_tournament_pools",
+            [
+                'tournament_level' => $tournament_level,
+                'pool_name' => $pool_name,
+                'pool_value' => $pool_value,
+                'is_playoff' => $is_playoff,
+                'season_id' => $season_id,
+                'region_id' => $region_id,
+                'age_group_id' => $age_group_id
+            ],
+            ['%s', '%s', '%s', '%d', '%s', '%s', '%s']
+        );
+
+        wp_send_json([
+            'success' => $this->wpdb->insert_id !== false,
+            'pool_id' => $this->wpdb->insert_id,
+            'error' => $this->wpdb->last_error
+        ]);
     }
 }

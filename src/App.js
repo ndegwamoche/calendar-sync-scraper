@@ -121,7 +121,7 @@ const App = () => {
         if (totalCombinations > 10) {
             const result = await Swal.fire({
                 title: 'Large Scraping Task',
-                text: `You are about to scrape ${totalCombinations} region and age group combinations. This may take a while. Continue?`,
+                text: `You are about to scrape all region and age group combinations. This may take a while. Continue?`,
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#3085d6',
@@ -150,7 +150,7 @@ const App = () => {
             for (const { region, ageGroup } of regionAgeGroupCombinations) {
                 setLog(prevLog => ({
                     ...prevLog,
-                    message: `Fetching pools for region ${region.region_name} (${region.region_value}) and age group ${ageGroup.age_group_name} (${ageGroup.age_group_value})...`,
+                    message: `Fetching ${formData.season} | Region: ${region.region_name} | Age Group: ${ageGroup.age_group_name} - fetching...`,
                     matches: allMatches,
                 }));
 
@@ -194,7 +194,8 @@ const App = () => {
                 for (const pool of currentPools) {
                     setLog(prevLog => ({
                         ...prevLog,
-                        message: `Scraping pool ${pool.tournament_level} - ${pool.pool_name} (${pool.pool_value}) for region ${region.region_name}, age group ${ageGroup.age_group_name}...`,
+                        message: `<strong>Season</strong> ${pool.season_name} | Region: ${region.region_name} | Age Group: ${ageGroup.age_group_name} | ` +
+                            `Tournament Level: ${pool.tournament_level} | Pool: ${pool.pool_name} - scraping...`,
                         matches: allMatches,
                     }));
 
@@ -257,6 +258,17 @@ const App = () => {
                     setProgress((completedRequests / totalPools) * 100);
                 }
             }
+
+            // Signal completion to backend
+            await fetch(calendarScraperAjax.ajax_url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    action: 'complete_scraper_log',
+                    _ajax_nonce: calendarScraperAjax.nonce,
+                    session_id: sessionId,
+                }),
+            });
 
             if (allMatches.length === 0) {
                 setLog({
@@ -456,7 +468,9 @@ const App = () => {
                                         <ul>
                                             {log.matches.map((match, index) => (
                                                 <li key={index}>
-                                                    Match {match.no}: Time {match.tid}: {match.hjemmehold}({match.hjemmehold_id}) vs {match.udehold}({match.udehold_id}) at {match.spillested} - {match.resultat}
+                                                    <strong>Match {match.no}</strong> – <em>{match.tid}</em>: <strong>{match.hjemmehold}</strong> ({match.hjemmehold_id})
+                                                    vs <strong>{match.udehold}</strong> ({match.udehold_id}) at <strong>{match.spillested}</strong> —
+                                                    Result: <strong>{match.resultat}</strong>
                                                 </li>
                                             ))}
                                         </ul>

@@ -81,9 +81,22 @@
     align-items: center;
     gap: 10px;
 
+    h3 {
+      margin: 10px 0 5px;
+      font-size: 1.2em;
+    }
+
+    .progress-label {
+      font-size: 0.9em;
+      color: #333;
+      text-align: center;
+      margin-top: 5px;
+    }
+
     progress {
       width: 100%;
-      height: 6px;
+      height: 20px;
+      margin-right: 10px;
       border: none;
       border-radius: 3px;
       background: #e5e7eb;
@@ -107,6 +120,9 @@
     span {
       font-size: 14px;
       color: #666;
+      display: inline-block;
+      width: 50px;
+      text-align: right;
     }
   }
 
@@ -119,11 +135,24 @@
     border: 1px solid #e5e7eb;
 
     pre {
-      margin: 0;
-      font-size: 13px;
-      color: #0069ff;
+      margin: 5px 0;
+      padding: 5px;
+      background-color: #f8f9fa;
+      border-left: 4px solid;
+      border-left-color: #0073aa;
       white-space: pre-wrap;
       word-break: break-word;
+      scraper-progress &.error {
+        border-left-color: #dc3232; /* Red for errors */
+      }
+
+      &.success {
+        border-left-color: #00a32a; /* Green for success */
+      }
+
+      &.warning {
+        border-left-color: #ffb900; /* Yellow for warnings */
+      }
     }
 
     ul {

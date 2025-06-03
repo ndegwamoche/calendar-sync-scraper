@@ -69,6 +69,73 @@ class Data_Loader
         ) ?: [];
     }
 
+    public function get_all_tournament_levels()
+    {
+
+        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
+
+        $season_id = sanitize_text_field($_POST['season_id']);
+
+        $levels = $this->wpdb->get_results(
+            $this->wpdb->prepare(
+                "SELECT
+                tl.id,
+                CONCAT(
+                    r.region_name,
+                    '->',
+                    ag.age_group_name,
+                    '->',
+                    tl.level_name
+                ) AS level_name
+            FROM
+                {$this->tournament_levels_table} tl
+            JOIN {$this->regions_table} r ON r.region_value = tl.region_id
+            JOIN {$this->age_groups_table} ag ON ag.age_group_value = tl.age_group_id
+            WHERE tl.season_id = %s",
+                $season_id
+            ),
+            ARRAY_A
+        ) ?: [];
+
+        wp_send_json_success($levels);
+        wp_die();
+    }
+
+    public function get_tournament_levels_by_region_age()
+    {
+        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
+
+        $season_id = sanitize_text_field($_POST['season_id']);
+        $region_id = sanitize_text_field($_POST['region_id']);
+        $age_group_id = sanitize_text_field($_POST['age_group_id']);
+
+        $levels = $this->wpdb->get_results(
+            $this->wpdb->prepare(
+                "SELECT
+                tl.id,
+                CONCAT(
+                    r.region_name,
+                    '->',
+                    ag.age_group_name,
+                    '->',
+                    tl.level_name
+                ) AS level_name
+            FROM
+                {$this->tournament_levels_table} tl
+            JOIN {$this->regions_table} r ON r.region_value = tl.region_id
+            JOIN {$this->age_groups_table} ag ON ag.age_group_value = tl.age_group_id
+            WHERE tl.region_id = %s AND tl.age_group_id = %s AND tl.season_id = %s",
+                $region_id,
+                $age_group_id,
+                $season_id
+            ),
+            ARRAY_A
+        ) ?: [];
+
+        wp_send_json_success(['data' => $levels]);
+        wp_die();
+    }
+
     public function get_tournament_pools()
     {
         $season = isset($_GET['season']) ? sanitize_text_field($_GET['season']) : '';
@@ -85,23 +152,21 @@ class Data_Loader
                     s.season_name,
                     r.region_name,
                     a.age_group_name,
-                    (
-                        SELECT
-                            google_color_id
-                        FROM
-                            wp_cal_sync_tournament_levels
-                        WHERE
-                            level_name LIKE tp.tournament_level
-                    )google_color_id
+                    tl.google_color_id
                 FROM
-                    wp_cal_sync_tournament_pools tp
-                JOIN wp_cal_sync_seasons s ON s.season_value = tp.season_id
-                JOIN wp_cal_sync_regions r ON r.region_value = tp.region_id
-                JOIN wp_cal_sync_age_groups a ON a.age_group_value = tp.age_group_id
+                    {$this->tournament_pools_table} tp
+                JOIN {$this->seasons_table} s ON s.season_value = tp.season_id
+                JOIN {$this->regions_table} r ON r.region_value = tp.region_id
+                JOIN {$this->age_groups_table} a ON a.age_group_value = tp.age_group_id
+                LEFT JOIN {$this->tournament_levels_table} tl 
+                    ON tl.level_name = tp.tournament_level 
+                    AND tl.season_id = tp.season_id 
+                    AND tl.region_id = tp.region_id 
+                    AND tl.age_group_id = tp.age_group_id
                 WHERE
-                    tp.season_id = %d
-                AND tp.region_id = %d
-                AND tp.age_group_id = %d",
+                    tp.season_id = %s
+                    AND tp.region_id = %s
+                    AND tp.age_group_id = %s",
                 $season,
                 $region,
                 $age_group

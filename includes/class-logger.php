@@ -15,7 +15,7 @@ class Logger
         $this->logs_table = $wpdb->prefix . 'cal_sync_logs';
     }
 
-    public function start_log($season_id, $region_id, $age_group_id, $pool_id)
+    public function start_log($season_id, $region_id, $age_group_id, $pool_id, $session_id)
     {
         $this->wpdb->insert(
             $this->logs_table,
@@ -26,7 +26,8 @@ class Logger
                 'age_group_id' => $age_group_id,
                 'pool_id' => $pool_id,
                 'status' => 'running',
-                'total_matches' => 0
+                'total_matches' => 0,
+                'session_id' => $session_id
             ]
         );
         return $this->wpdb->insert_id;
@@ -34,15 +35,17 @@ class Logger
 
     public function update_log($log_id, $total_matches = 0, $error_message = null, $status = 'failed')
     {
-        $data = ['total_matches' => $total_matches];
-        if ($error_message) {
-            $data['error_message'] = $error_message;
-            $data['status'] = $status;
-        }
         $this->wpdb->update(
-            $this->logs_table,
-            $data,
-            ['id' => $log_id]
+            $this->wpdb->prefix . 'cal_sync_logs',
+            [
+                'total_matches' => $total_matches,
+                'error_message' => serialize($error_message), // Serialize the array of messages
+                'status' => $status,
+                'close_datetime' => ($status === 'completed' || $status === 'failed') ? current_time('mysql') : null,
+            ],
+            ['id' => $log_id],
+            ['%d', '%s', '%s', '%s'],
+            ['%d']
         );
     }
 
@@ -56,6 +59,30 @@ class Logger
             ],
             ['id' => $log_id]
         );
+    }
+
+    public function complete_scraper_log()
+    {
+        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
+
+        $session_id = sanitize_text_field($_POST['session_id']);
+
+        if (empty($session_id)) {
+            wp_send_json(['success' => false, 'data' => ['message' => 'Session ID is required.']]);
+            return;
+        }
+
+        $this->wpdb->update(
+            $this->logs_table,
+            [
+                'close_datetime' => current_time('mysql'),
+                'status' => 'completed'
+            ],
+            ['session_id' => $session_id]
+        );
+
+        wp_send_json(['success' => true, 'data' => ['message' => 'Log completed successfully.']]);
+        wp_die();
     }
 
     public function log($status, $message = '')

@@ -4822,7 +4822,7 @@ const App = () => {
     if (totalCombinations > 10) {
       const result = await sweetalert2__WEBPACK_IMPORTED_MODULE_1___default().fire({
         title: 'Large Scraping Task',
-        text: `You are about to scrape ${totalCombinations} region and age group combinations. This may take a while. Continue?`,
+        text: `You are about to scrape all region and age group combinations. This may take a while. Continue?`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#3085d6',
@@ -4856,7 +4856,7 @@ const App = () => {
       } of regionAgeGroupCombinations) {
         setLog(prevLog => ({
           ...prevLog,
-          message: `Fetching pools for region ${region.region_name} (${region.region_value}) and age group ${ageGroup.age_group_name} (${ageGroup.age_group_value})...`,
+          message: `Fetching ${formData.season} | Region: ${region.region_name} | Age Group: ${ageGroup.age_group_name} - fetching...`,
           matches: allMatches
         }));
 
@@ -4895,7 +4895,7 @@ const App = () => {
         for (const pool of currentPools) {
           setLog(prevLog => ({
             ...prevLog,
-            message: `Scraping pool ${pool.tournament_level} - ${pool.pool_name} (${pool.pool_value}) for region ${region.region_name}, age group ${ageGroup.age_group_name}...`,
+            message: `<strong>Season</strong> ${pool.season_name} | Region: ${region.region_name} | Age Group: ${ageGroup.age_group_name} | ` + `Tournament Level: ${pool.tournament_level} | Pool: ${pool.pool_name} - scraping...`,
             matches: allMatches
           }));
           const response = await fetch(calendarScraperAjax.ajax_url, {
@@ -4954,6 +4954,19 @@ const App = () => {
           setProgress(completedRequests / totalPools * 100);
         }
       }
+
+      // Signal completion to backend
+      await fetch(calendarScraperAjax.ajax_url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          action: 'complete_scraper_log',
+          _ajax_nonce: calendarScraperAjax.nonce,
+          session_id: sessionId
+        })
+      });
       if (allMatches.length === 0) {
         setLog({
           message: `No matches found for any pools at venue ${formData.venue}`,
@@ -5177,7 +5190,19 @@ const App = () => {
                 children: log.message
               }), log.matches.length > 0 ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("ul", {
                 children: log.matches.map((match, index) => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("li", {
-                  children: ["Match ", match.no, ": Time ", match.tid, ": ", match.hjemmehold, "(", match.hjemmehold_id, ") vs ", match.udehold, "(", match.udehold_id, ") at ", match.spillested, " - ", match.resultat]
+                  children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("strong", {
+                    children: ["Match ", match.no]
+                  }), " \u2013 ", /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("em", {
+                    children: match.tid
+                  }), ": ", /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("strong", {
+                    children: match.hjemmehold
+                  }), " (", match.hjemmehold_id, ") vs ", /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("strong", {
+                    children: match.udehold
+                  }), " (", match.udehold_id, ") at ", /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("strong", {
+                    children: match.spillested
+                  }), " \u2014 Result: ", /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("strong", {
+                    children: match.resultat
+                  })]
                 }, index))
               }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("p", {
                 children: "No matches to display yet."
@@ -5245,15 +5270,48 @@ const Colors = ({
   const [levelColors, setLevelColors] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({});
   const [selectedLevel, setSelectedLevel] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('');
   const [availableLevels, setAvailableLevels] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
+  const [allLevels, setAllLevels] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
   const [loading, setLoading] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(true);
   const [selectedRegion, setSelectedRegion] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('');
   const [selectedAgeGroup, setSelectedAgeGroup] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('');
   const [pools, setPools] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
-  const levels = window.calendarScraperAjax?.tournament_levels || [];
+  const [levelsLoading, setLevelsLoading] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
+  const [log, setLog] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
+    message: ''
+  });
+  const [isScraping, setIsScraping] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
+  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
+    const fetchAllLevels = async () => {
+      try {
+        const response = await fetch(calendarScraperAjax.ajax_url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: new URLSearchParams({
+            action: 'get_all_tournament_levels',
+            season_id: season,
+            _ajax_nonce: calendarScraperAjax.nonce
+          })
+        });
+        const data = await response.json();
+        if (data.success) {
+          const levels = Array.isArray(data.data) ? data.data : [];
+          setAllLevels(levels);
+          console.log('All levels:', levels);
+        } else {
+          console.error('Failed to fetch all levels:', data.data?.message || 'Unknown error');
+        }
+      } catch (error) {
+        console.error('Error fetching all levels:', error);
+      }
+    };
+    fetchAllLevels();
+  }, []);
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
     const fetchPools = async () => {
       try {
-        const response = await fetch(`${calendarScraperAjax.ajax_url}?action=get_tournament_options&season=${season}&region=${selectedRegion}&age_group=${selectedAgeGroup}&_ajax_nonce=${calendarScraperAjax.nonce}`, {
+        const response = await fetch(`${calendarScraperAjax.ajax_url}?action=get_tournament_options&season=${season}®ion=${selectedRegion}&age_group=${selectedAgeGroup}&_ajax_nonce=${calendarScraperAjax.nonce}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
@@ -5286,7 +5344,7 @@ const Colors = ({
         });
         const data = await response.json();
         if (data.success) {
-          setGoogleColors(Object.values(data.data)); // Store full color objects
+          setGoogleColors(Object.values(data.data));
         } else {
           console.error('Failed to fetch Google colors:', data.data?.message || 'Unknown error');
         }
@@ -5308,7 +5366,7 @@ const Colors = ({
         });
         const data = await response.json();
         if (data.success) {
-          setLevelColors(data.data); // Expects level_id -> google_color_id
+          setLevelColors(data.data);
         } else {
           console.error('Failed to fetch level colors:', data.data?.message || 'Unknown error');
         }
@@ -5319,8 +5377,44 @@ const Colors = ({
     Promise.all([fetchGoogleColors(), fetchLevelColors()]).finally(() => setLoading(false));
   }, []);
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
-    setAvailableLevels(levels.filter(level => !levelColors[level.id]));
-  }, [levels, levelColors]);
+    const fetchLevels = async () => {
+      if (!selectedRegion || !selectedAgeGroup) {
+        setAvailableLevels([]);
+        return;
+      }
+      setLevelsLoading(true);
+      try {
+        const response = await fetch(calendarScraperAjax.ajax_url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: new URLSearchParams({
+            action: 'get_tournament_levels_by_region_age',
+            season_id: season,
+            region_id: selectedRegion,
+            age_group_id: selectedAgeGroup,
+            _ajax_nonce: calendarScraperAjax.nonce
+          })
+        });
+        const data = await response.json();
+        if (data.success) {
+          const levels = Array.isArray(data.data.data) ? data.data.data : [];
+          setAvailableLevels(levels);
+          console.log('Fetched levels:', levels);
+        } else {
+          console.error('Failed to fetch levels:', data.data?.message || 'Unknown error');
+          setAvailableLevels([]);
+        }
+      } catch (error) {
+        console.error('Error fetching levels:', error);
+        setAvailableLevels([]);
+      } finally {
+        setLevelsLoading(false);
+      }
+    };
+    fetchLevels();
+  }, [selectedRegion, selectedAgeGroup, season]);
   const handleAssignColor = async (levelID, googleColorId) => {
     try {
       const response = await fetch(calendarScraperAjax.ajax_url, {
@@ -5341,7 +5435,7 @@ const Colors = ({
           ...prev,
           [levelID]: googleColorId
         }));
-        setSelectedLevel('');
+        setSelectedLevel(''); // Reset dropdown to default
       } else {
         console.error('Failed to save level color:', data.data?.message || 'Unknown error');
       }
@@ -5416,7 +5510,7 @@ const Colors = ({
         const data = await response.json();
         if (data.success) {
           setLevelColors({});
-          setAvailableLevels(levels);
+          // No need to update availableLevels here since the filter will handle it
         } else {
           console.error('Failed to clear level colors:', data.data?.message || 'Unknown error');
         }
@@ -5437,32 +5531,209 @@ const Colors = ({
       cancelButtonText: 'Cancel'
     });
     if (result.isConfirmed) {
-      try {
-        const response = await fetch(calendarScraperAjax.ajax_url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-          },
-          body: new URLSearchParams({
-            action: 'run_pools_scraping',
-            season: season,
-            link_structure: url,
-            _ajax_nonce: calendarScraperAjax.nonce
-          })
-        });
-        const data = await response.json();
-        if (data.success) {} else {
-          console.error('Failed to scrape pools:', data.data?.message || 'Unknown error');
+      setIsScraping(true);
+      setLog({
+        message: 'Starting pool scraping for all regions and age groups...'
+      });
+      let allMessages = [];
+      let hasErrors = false;
+      let insertedLevels = 0;
+      let insertedPools = 0;
+      let skippedLevels = 0;
+      let skippedPools = 0;
+      for (const region of regions) {
+        for (const ageGroup of ageGroups) {
+          setLog(prevLog => ({
+            message: `Scraping region: ${region.region_name} (${region.region_value}), age group: ${ageGroup.age_group_name} (${ageGroup.age_group_value})...\n${prevLog.message}`
+          }));
+          try {
+            const fetchResponse = await fetch(calendarScraperAjax.ajax_url, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+              },
+              body: new URLSearchParams({
+                action: 'fetch_page_html',
+                season: season,
+                link_structure: url,
+                region: region.region_value,
+                age_group: ageGroup.age_group_value,
+                _ajax_nonce: calendarScraperAjax.nonce
+              })
+            });
+            if (!fetchResponse.ok) {
+              throw new Error(`HTTP error! Status: ${fetchResponse.status}`);
+            }
+            const fetchData = await fetchResponse.json();
+            if (!fetchData.success) {
+              throw new Error(fetchData.error);
+            }
+            allMessages = [...allMessages, ...fetchData.messages];
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(fetchData.html, 'text/html');
+            const tableRows = doc.querySelectorAll('table.selectgroup tr');
+            if (tableRows.length === 0) {
+              allMessages.push(`No selectgroup table rows found for region ${region.region_name} (${region.region_value}), age group ${ageGroup.age_group_name} (${ageGroup.age_group_value})`);
+              hasErrors = true;
+              continue;
+            }
+            const tournamentData = {};
+            let currentLevel = null;
+            tableRows.forEach(row => {
+              const rowClass = row.className || '';
+              if (rowClass.includes('divisionrow')) {
+                const h3 = row.querySelector('td h3');
+                const levelName = h3 ? h3.textContent.trim() : 'Unknown Level';
+                currentLevel = levelName;
+                tournamentData[currentLevel] = [];
+                allMessages.push(`Found level: ${levelName}`);
+              } else if (rowClass.includes('grouprow') && currentLevel !== null) {
+                const link = row.querySelector('td a');
+                if (link) {
+                  const poolName = link.textContent.trim();
+                  const onclick = link.getAttribute('onclick') || '';
+                  const match = onclick.match(/ShowStanding\('[^']*',\s*'[^']*',\s*'(\d+)'/);
+                  const poolValue = match ? match[1] : '';
+                  if (poolValue) {
+                    tournamentData[currentLevel].push({
+                      pool_value: poolValue,
+                      pool_name: poolName
+                    });
+                    allMessages.push(`Found pool: ${poolName} (${poolValue}) under level: ${currentLevel}`);
+                  }
+                }
+              }
+            });
+            for (const [levelName, pools] of Object.entries(tournamentData)) {
+              if (pools.length === 0) {
+                allMessages.push(`No pools found for level: ${levelName}, skipping...`);
+                continue;
+              }
+              const isPlayoff = levelName.toLowerCase().includes('slutspil') || levelName.toLowerCase().includes('kval.kampe') ? 1 : 0;
+              const checkLevelResponse = await fetch(calendarScraperAjax.ajax_url, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                  action: 'check_tournament_level',
+                  level_name: levelName,
+                  season_id: season,
+                  region_id: region.region_value,
+                  age_group_id: ageGroup.age_group_value,
+                  _ajax_nonce: calendarScraperAjax.nonce
+                })
+              });
+              const checkLevelData = await checkLevelResponse.json();
+              if (!checkLevelData.success) {
+                allMessages.push(`Error checking level ${levelName}: ${checkLevelData.error}`);
+                hasErrors = true;
+                continue;
+              }
+              if (!checkLevelData.exists) {
+                const insertLevelResponse = await fetch(calendarScraperAjax.ajax_url, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                  },
+                  body: new URLSearchParams({
+                    action: 'insert_tournament_level',
+                    level_name: levelName,
+                    season_id: season,
+                    region_id: region.region_value,
+                    age_group_id: ageGroup.age_group_value,
+                    _ajax_nonce: calendarScraperAjax.nonce
+                  })
+                });
+                const insertLevelData = await insertLevelResponse.json();
+                if (insertLevelData.success) {
+                  insertedLevels++;
+                  allMessages.push(`Successfully inserted level: ${levelName} (ID: ${insertLevelData.level_id})`);
+                } else {
+                  allMessages.push(`Failed to insert level: ${levelName} - ${insertLevelData.error}`);
+                  hasErrors = true;
+                  continue;
+                }
+              } else {
+                skippedLevels++;
+                allMessages.push(`Skipped existing level: ${levelName} (ID: ${checkLevelData.level_id})`);
+              }
+              for (const pool of pools) {
+                const checkPoolResponse = await fetch(calendarScraperAjax.ajax_url, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                  },
+                  body: new URLSearchParams({
+                    action: 'check_tournament_pool',
+                    tournament_level: levelName,
+                    pool_value: pool.pool_value,
+                    season_id: season,
+                    region_id: region.region_value,
+                    age_group_id: ageGroup.age_group_value,
+                    _ajax_nonce: calendarScraperAjax.nonce
+                  })
+                });
+                const checkPoolData = await checkPoolResponse.json();
+                if (!checkPoolData.success) {
+                  allMessages.push(`Error checking pool ${pool.pool_name} (${pool.pool_value}): ${checkPoolData.error}`);
+                  hasErrors = true;
+                  continue;
+                }
+                if (checkPoolData.exists) {
+                  skippedPools++;
+                  allMessages.push(`Skipped duplicate pool: ${levelName} - ${pool.pool_name} (${pool.pool_value})`);
+                  continue;
+                }
+                const insertPoolResponse = await fetch(calendarScraperAjax.ajax_url, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                  },
+                  body: new URLSearchParams({
+                    action: 'insert_tournament_pool',
+                    tournament_level: levelName,
+                    pool_name: pool.pool_name,
+                    pool_value: pool.pool_value,
+                    is_playoff: isPlayoff,
+                    season_id: season,
+                    region_id: region.region_value,
+                    age_group_id: ageGroup.age_group_value,
+                    _ajax_nonce: calendarScraperAjax.nonce
+                  })
+                });
+                const insertPoolData = await insertPoolResponse.json();
+                if (insertPoolData.success) {
+                  insertedPools++;
+                  allMessages.push(`Successfully inserted pool: ${levelName} - ${pool.pool_name} (${pool.pool_value}) (ID: ${insertPoolData.pool_id})`);
+                } else {
+                  allMessages.push(`Failed to insert pool: ${levelName} - ${pool.pool_name} (${pool.pool_value}) - ${insertPoolData.error}`);
+                  hasErrors = true;
+                }
+              }
+            }
+          } catch (error) {
+            hasErrors = true;
+            allMessages.push(`Error scraping region ${region.region_name} (${region.region_value}), age group ${ageGroup.age_group_name} (${ageGroup.age_group_value}): ${error.message}`);
+          }
         }
-      } catch (error) {
-        console.error('Error scraping pools:', error);
       }
+      const summaryMessage = `Scrape completed: Inserted ${insertedLevels} levels and ${insertedPools} pools, skipped ${skippedLevels} levels and ${skippedPools} pools`;
+      allMessages.push(summaryMessage);
+      const finalMessage = allMessages.join('\n');
+      setLog({
+        message: hasErrors ? `Scraping completed with errors:\n${finalMessage}` : `Scraping completed successfully:\n${finalMessage}`
+      });
+      setIsScraping(false);
     }
   };
   const getHexCode = googleColorId => {
     const colorObj = googleColors.find(color => color.google_color_id === googleColorId);
     return colorObj ? colorObj.hex_code : '#000000';
   };
+
+  // Filter availableLevels to exclude levels that already have a color assigned
+  const unassignedLevels = Array.isArray(availableLevels) ? availableLevels.filter(level => !Object.keys(levelColors).includes(level.id)) : [];
   return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsxs)("div", {
     id: "sheet-colors",
     className: "tab-section",
@@ -5512,14 +5783,22 @@ const Colors = ({
           className: "form-select",
           value: selectedLevel,
           onChange: e => setSelectedLevel(e.target.value),
-          disabled: availableLevels.length === 0,
+          disabled: levelsLoading || !Array.isArray(availableLevels) || unassignedLevels.length === 0,
           children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("option", {
             value: "",
             children: "-- Select Tournament Level --"
-          }), availableLevels.map(level => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("option", {
+          }), levelsLoading ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("option", {
+            value: "",
+            disabled: true,
+            children: "Loading levels..."
+          }) : unassignedLevels.length > 0 ? unassignedLevels.map(level => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("option", {
             value: level.id,
             children: level.level_name
-          }, level.id))]
+          }, level.id)) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("option", {
+            value: "",
+            disabled: true,
+            children: "No unassigned levels available"
+          })]
         })]
       })
     }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsxs)("div", {
@@ -5553,7 +5832,7 @@ const Colors = ({
       }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("ul", {
         className: "assigned-colors",
         children: Object.entries(levelColors).map(([levelID, googleColorId]) => {
-          const level = levels.find(l => l.id === levelID);
+          const level = allLevels.find(l => l.id === levelID);
           const hexCode = getHexCode(googleColorId);
           return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsxs)("li", {
             children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("span", {
@@ -5586,13 +5865,28 @@ const Colors = ({
         type: "button",
         className: "button button-primary",
         onClick: handleScrapingPools,
-        children: "Run Pools Scraping"
+        disabled: isScraping,
+        children: isScraping ? 'Running...' : 'Run Pools Scraping'
       }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("button", {
         type: "button",
         className: "button button-secondary",
         onClick: handleClearAll,
+        disabled: isScraping,
         children: "Clear All Colors"
       })]
+    }), isScraping && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("div", {
+      className: "loader",
+      style: {
+        marginTop: '10px',
+        textAlign: 'center'
+      },
+      children: "Scraping pools... Please wait."
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("div", {
+      id: "scraper-log",
+      className: "scraper-log",
+      children: log.message && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("pre", {
+        children: log.message
+      })
     })]
   });
 };

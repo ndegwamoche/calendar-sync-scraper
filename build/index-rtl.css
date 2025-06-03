@@ -347,9 +347,20 @@
   align-items: center;
   gap: 10px;
 }
+.wrap #scraper-progress h3 {
+  margin: 10px 0 5px;
+  font-size: 1.2em;
+}
+.wrap #scraper-progress .progress-label {
+  font-size: 0.9em;
+  color: #333;
+  text-align: center;
+  margin-top: 5px;
+}
 .wrap #scraper-progress progress {
   width: 100%;
-  height: 6px;
+  height: 20px;
+  margin-left: 10px;
   border: none;
   border-radius: 3px;
   background: #e5e7eb;
@@ -369,6 +380,9 @@
 .wrap #scraper-progress span {
   font-size: 14px;
   color: #666;
+  display: inline-block;
+  width: 50px;
+  text-align: left;
 }
 .wrap .scraper-log {
   margin-top: 20px;
@@ -378,11 +392,22 @@
   border: 1px solid #e5e7eb;
 }
 .wrap .scraper-log pre {
-  margin: 0;
-  font-size: 13px;
-  color: #0069ff;
+  margin: 5px 0;
+  padding: 5px;
+  background-color: #f8f9fa;
+  border-right: 4px solid;
+  border-right-color: #0073aa;
   white-space: pre-wrap;
   word-break: break-word;
+}
+scraper-progress .wrap .scraper-log pre.error {
+  border-right-color: #dc3232; /* Red for errors */
+}
+.wrap .scraper-log pre.success {
+  border-right-color: #00a32a; /* Green for success */
+}
+.wrap .scraper-log pre.warning {
+  border-right-color: #ffb900; /* Yellow for warnings */
 }
 .wrap .scraper-log ul {
   list-style: none;
