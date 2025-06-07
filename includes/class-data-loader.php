@@ -36,7 +36,7 @@ class Data_Loader
     public function get_regions()
     {
         return $this->wpdb->get_results(
-            "SELECT region_name, region_value FROM {$this->regions_table}",
+            "SELECT region_name, region_value FROM {$this->regions_table} ORDER BY region_order DESC",
             ARRAY_A
         ) ?: [];
     }
@@ -170,6 +170,41 @@ class Data_Loader
                 $season,
                 $region,
                 $age_group
+            ),
+            ARRAY_A
+        ) ?: [];
+    }
+
+    public function get_all_tournament_pools($season_id)
+    {
+
+        return $this->wpdb->get_results(
+            $this->wpdb->prepare(
+                "SELECT
+                    tp.id,
+                    tp.pool_name,
+                    tp.pool_value,
+                    tp.tournament_level,
+                    s.season_name,
+                    r.region_name,
+                    a.age_group_name,
+                    tl.google_color_id,
+                    tp.region_id,
+	                tp.age_group_id,
+                    r.region_order
+                FROM
+                    {$this->tournament_pools_table} tp
+                JOIN {$this->seasons_table} s ON s.season_value = tp.season_id
+                JOIN {$this->regions_table} r ON r.region_value = tp.region_id
+                JOIN {$this->age_groups_table} a ON a.age_group_value = tp.age_group_id
+                LEFT JOIN {$this->tournament_levels_table} tl 
+                    ON tl.level_name = tp.tournament_level 
+                    AND tl.season_id = tp.season_id 
+                    AND tl.region_id = tp.region_id 
+                    AND tl.age_group_id = tp.age_group_id
+                WHERE
+                    tp.season_id = %d",
+                $season_id,
             ),
             ARRAY_A
         ) ?: [];

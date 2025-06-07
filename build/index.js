@@ -4724,20 +4724,13 @@ const App = () => {
   const [logInfo, setLogInfo] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
   const regions = window.calendarScraperAjax?.regions || [];
   const ageGroups = window.calendarScraperAjax?.age_groups || [];
+  const sessionId = Date.now().toString();
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.season) {
-      newErrors.season = 'Please select a season.';
-    }
+    if (!formData.season) newErrors.season = 'Please select a season.';
     const linkStructureRegex = /^https:\/\/www\.bordtennisportalen\.dk\/DBTU\/HoldTurnering\/Stilling\/#4,\{season\},\{pool\},\{group\},\{region\},,,,$/;
-    if (!formData.linkStructure) {
-      newErrors.linkStructure = 'Link structure is required.';
-    } else if (!linkStructureRegex.test(formData.linkStructure)) {
-      newErrors.linkStructure = 'Link structure must match the expected format.';
-    }
-    if (!formData.venue.trim()) {
-      newErrors.venue = 'Venue name is required.';
-    }
+    if (!formData.linkStructure) newErrors.linkStructure = 'Link structure is required.';else if (!linkStructureRegex.test(formData.linkStructure)) newErrors.linkStructure = 'Link structure must match the expected format.';
+    if (!formData.venue.trim()) newErrors.venue = 'Venue name is required.';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -4750,12 +4743,10 @@ const App = () => {
       ...prev,
       [name]: value
     }));
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
+    if (errors[name]) setErrors(prev => ({
+      ...prev,
+      [name]: ''
+    }));
   };
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
     if (activeTab === 'log-state') {
@@ -4795,9 +4786,27 @@ const App = () => {
       fetchLogInfo();
     }
   }, [activeTab]);
-
-  // Handle scraper run for all regions and age groups
-  const handleRunScraper = async () => {
+  const debounce = (func, wait) => {
+    let timeout;
+    return (...args) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), wait);
+    };
+  };
+  async function get_scraper_progress(sessionId) {
+    try {
+      const response = await fetch(`${calendarScraperAjax.ajax_url}?action=get_scraper_progress&session_id=${encodeURIComponent(sessionId)}&total_matches=175`);
+      const data = await response.json();
+      if (data.success) {
+        return data.data;
+      } else {
+        return null;
+      }
+    } catch (error) {
+      return null;
+    }
+  }
+  const handleRunAllScrapers = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(async () => {
     if (!validateForm()) {
       setLog({
         message: 'Please fix the errors in the form.',
@@ -4805,191 +4814,96 @@ const App = () => {
       });
       return;
     }
-
-    // Create combinations of regions and age groups
-    const regionAgeGroupCombinations = [];
-    for (const region of regions) {
-      for (const ageGroup of ageGroups) {
-        regionAgeGroupCombinations.push({
-          region,
-          ageGroup
-        });
-      }
-    }
-
-    // Confirmation for large scraping tasks
-    const totalCombinations = regionAgeGroupCombinations.length;
-    if (totalCombinations > 10) {
-      const result = await sweetalert2__WEBPACK_IMPORTED_MODULE_1___default().fire({
-        title: 'Large Scraping Task',
-        text: `You are about to scrape all region and age group combinations. This may take a while. Continue?`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Yes, proceed',
-        cancelButtonText: 'Cancel'
-      });
-      if (!result.isConfirmed) {
-        setLog({
-          message: 'Scraping cancelled by user.',
-          matches: []
-        });
-        return;
-      }
-    }
-    setIsRunning(true);
-    setLog({
-      message: 'Starting scraper for all regions and age groups...',
-      matches: []
+    const result = await sweetalert2__WEBPACK_IMPORTED_MODULE_1___default().fire({
+      title: 'Large Scraping Task',
+      text: `You are about to scrape all region and age group combinations. This may take a while. Continue?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, proceed',
+      cancelButtonText: 'Cancel'
     });
-    setProgress(0);
     let allMatches = [];
-    let completedRequests = 0;
-    const sessionId = Date.now().toString();
-    let totalPools = 0;
-    try {
-      // Loop through all regions and age groups
-      for (const {
-        region,
-        ageGroup
-      } of regionAgeGroupCombinations) {
-        setLog(prevLog => ({
-          ...prevLog,
-          message: `Fetching ${formData.season} | Region: ${region.region_name} | Age Group: ${ageGroup.age_group_name} - fetching...`,
-          matches: allMatches
-        }));
-
-        // Fetch pools for the current region and age group
-        const response = await fetch(`${calendarScraperAjax.ajax_url}?action=get_tournament_options&season=${formData.season}&region=${region.region_value}&age_group=${ageGroup.age_group_value}&_ajax_nonce=${calendarScraperAjax.nonce}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-          }
-        });
-        const poolData = await response.json();
-        let currentPools = [];
-        if (poolData.success) {
-          currentPools = poolData.data.pools || [];
-          totalPools += currentPools.length;
-        } else {
-          setLog(prevLog => ({
-            ...prevLog,
-            message: `Failed to fetch pools for region ${region.region_name} (${region.region_value}), age group ${ageGroup.age_group_name}: ${poolData.data?.message || 'Unknown error'}`,
-            matches: allMatches
-          }));
-          continue;
-        }
-        if (currentPools.length === 0) {
-          setLog(prevLog => ({
-            ...prevLog,
-            message: `No pools found for region ${region.region_name} (${region.region_value}), age group ${ageGroup.age_group_name}`,
-            matches: allMatches
-          }));
-          completedRequests++;
-          setProgress(completedRequests / totalCombinations * 100);
-          continue;
-        }
-
-        // Scrape each pool for the current region and age group
-        for (const pool of currentPools) {
-          setLog(prevLog => ({
-            ...prevLog,
-            message: `<strong>Season</strong> ${pool.season_name} | Region: ${region.region_name} | Age Group: ${ageGroup.age_group_name} | ` + `Tournament Level: ${pool.tournament_level} | Pool: ${pool.pool_name} - scraping...`,
-            matches: allMatches
-          }));
-          const response = await fetch(calendarScraperAjax.ajax_url, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: new URLSearchParams({
-              action: 'run_calendar_scraper',
-              _ajax_nonce: calendarScraperAjax.nonce,
-              season: formData.season,
-              link_structure: formData.linkStructure,
-              venue: formData.venue,
-              region: region.region_value,
-              age_group: ageGroup.age_group_value,
-              age_group_name: ageGroup.age_group_name,
-              region_name: region.region_name,
-              season_name: pool.season_name,
-              pool: pool.pool_value,
-              pool_name: pool.pool_name,
-              tournament_level: pool.tournament_level,
-              color_id: pool.google_color_id,
-              session_id: sessionId,
-              total_pools: totalPools
-            })
-          });
-          const data = await response.json();
-          if (data.success) {
-            if (data.data.error) {
-              setLog(prevLog => ({
-                ...prevLog,
-                message: `Error in pool ${pool.pool_value}: ${data.data.error}`,
-                matches: allMatches
-              }));
-            } else if (Array.isArray(data.data.message) && data.data.message.length === 0) {
-              setLog(prevLog => ({
-                ...prevLog,
-                message: `No matches found for pool ${pool.pool_value} at venue ${formData.venue}`,
-                matches: allMatches
-              }));
-            } else {
-              allMatches = [...allMatches, ...data.data.message];
-              setLog({
-                message: `Completed scraping pool ${pool.tournament_level} - ${pool.pool_name} (${pool.pool_value}) for region ${region.region_name}, age group ${ageGroup.age_group_name}`,
-                matches: allMatches
-              });
-            }
-          } else {
-            setLog(prevLog => ({
-              ...prevLog,
-              message: `Error in pool ${pool.pool_value}: ${data.data?.message || 'Something went wrong.'}`,
-              matches: allMatches
-            }));
-          }
-          completedRequests++;
-          setProgress(completedRequests / totalPools * 100);
-        }
-      }
-
-      // Signal completion to backend
-      await fetch(calendarScraperAjax.ajax_url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: new URLSearchParams({
-          action: 'complete_scraper_log',
-          _ajax_nonce: calendarScraperAjax.nonce,
-          session_id: sessionId
-        })
-      });
-      if (allMatches.length === 0) {
-        setLog({
-          message: `No matches found for any pools at venue ${formData.venue}`,
-          matches: []
-        });
-      } else {
-        setLog({
-          message: `All regions, age groups, and pools scraped successfully! Found ${allMatches.length} matches`,
-          matches: allMatches
-        });
-      }
-    } catch (error) {
+    if (!result.isConfirmed) {
       setLog({
-        message: `Error: ${error.message}`,
-        matches: allMatches
+        message: 'Scraping cancelled by user.',
+        matches: []
+      });
+      return;
+    } else {
+      setIsRunning(true);
+      setLog({
+        message: 'Starting scraper for all regions and age groups...',
+        matches: []
       });
       setProgress(0);
-    } finally {
-      setIsRunning(false);
+      const intervalId = setInterval(async () => {
+        const progressData = await get_scraper_progress(sessionId);
+        if (!progressData || progressData.status === 'completed') {
+          clearInterval(intervalId);
+          setProgress(100);
+          return;
+        }
+        setProgress(progressData.progress);
+        setLog({
+          message: progressData.message,
+          matches: allMatches
+        });
+      }, 1000);
+      const sessionId = Date.now().toString();
+      try {
+        const response = await fetch(calendarScraperAjax.ajax_url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: new URLSearchParams({
+            action: 'run_all_calendar_scraper',
+            _ajax_nonce: calendarScraperAjax.nonce,
+            season: formData.season,
+            link_structure: formData.linkStructure,
+            venue: formData.venue,
+            session_id: sessionId
+          })
+        });
+        const data = await response.json();
+        if (data.success) {
+          const matches = data.data.matches;
+          if (matches.length === 0) {
+            setLog({
+              message: `No matches found`,
+              matches: allMatches
+            });
+            setProgress(100);
+            setIsRunning(false);
+          } else {
+            allMatches = [...allMatches, ...matches];
+            setLog({
+              message: `✅ Scraping completed! Found ${matches.length} matches`,
+              matches: allMatches
+            });
+            setProgress(100);
+            setIsRunning(false);
+          }
+        } else {
+          setLog({
+            message: `❌ Error ${data.data?.message || 'Something went wrong.'}`,
+            matches: allMatches
+          });
+          setProgress(0);
+          setIsRunning(false);
+        }
+      } catch (error) {
+        setLog({
+          message: `Error: ${error.message}`,
+          matches: []
+        });
+        setProgress(0);
+        setIsRunning(false);
+      }
     }
-  };
-
-  // Handle clearing matches
+  }, [formData]);
   const handleClearMatches = async () => {
     const result = await sweetalert2__WEBPACK_IMPORTED_MODULE_1___default().fire({
       title: 'Are you sure?',
@@ -5163,7 +5077,7 @@ const App = () => {
                 type: "button",
                 id: "run-scraper-now",
                 className: "button button-primary",
-                onClick: handleRunScraper,
+                onClick: handleRunAllScrapers,
                 disabled: isRunning || isClearing,
                 children: isRunning ? 'Running...' : 'Run Scraper Now'
               }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("button", {
@@ -5176,9 +5090,13 @@ const App = () => {
               })]
             }), (isRunning || isClearing) && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("div", {
               id: "scraper-progress",
-              children: [isRunning && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("progress", {
-                value: progress,
-                max: "100"
+              children: [isRunning && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.Fragment, {
+                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("progress", {
+                  value: progress,
+                  max: "100"
+                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("span", {
+                  children: [progress, "%"]
+                })]
               }), isClearing && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("div", {
                 className: "loader",
                 children: "Clearing..."
@@ -5187,7 +5105,9 @@ const App = () => {
               id: "scraper-log",
               className: "scraper-log",
               children: [log.message && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("pre", {
-                children: log.message
+                dangerouslySetInnerHTML: {
+                  __html: log.message.replace(/\\n/g, '\n')
+                }
               }), log.matches.length > 0 ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("ul", {
                 children: log.matches.map((match, index) => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("li", {
                   children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("strong", {
@@ -5298,7 +5218,6 @@ const Colors = ({
         if (data.success) {
           const levels = Array.isArray(data.data) ? data.data : [];
           setAllLevels(levels);
-          console.log('All levels:', levels);
         } else {
           console.error('Failed to fetch all levels:', data.data?.message || 'Unknown error');
         }
@@ -5854,26 +5773,20 @@ const Colors = ({
           }, levelID);
         })
       })]
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsxs)("div", {
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("div", {
       className: "form-section button-group",
       style: {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center'
       },
-      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("button", {
-        type: "button",
-        className: "button button-primary",
-        onClick: handleScrapingPools,
-        disabled: isScraping,
-        children: isScraping ? 'Running...' : 'Run Pools Scraping'
-      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("button", {
+      children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("button", {
         type: "button",
         className: "button button-secondary",
         onClick: handleClearAll,
         disabled: isScraping,
         children: "Clear All Colors"
-      })]
+      })
     }), isScraping && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("div", {
       className: "loader",
       style: {
@@ -6041,8 +5954,10 @@ const Logs = ({
                 colSpan: "6",
                 children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
                   className: "log-details-content",
-                  children: detailsData.content.split('\\n').map((line, index) => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("p", {
-                    children: line
+                  children: detailsData.content.split('\n').map((line, index) => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("p", {
+                    dangerouslySetInnerHTML: {
+                      __html: line
+                    }
                   }, index))
                 })
               })
@@ -6091,7 +6006,8 @@ const Settings = () => {
   const [formData, setFormData] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
     clientId: '',
     clientSecret: '',
-    refreshToken: ''
+    refreshToken: '',
+    timeOffset: '+1 hour'
   });
   const [errors, setErrors] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({});
   const [message, setMessage] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
@@ -6099,8 +6015,6 @@ const Settings = () => {
     type: ''
   });
   const [loading, setLoading] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(true);
-
-  // Fetch initial credentials when component mounts
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
     const fetchCredentials = async () => {
       setLoading(true);
@@ -6116,7 +6030,8 @@ const Settings = () => {
           setFormData({
             clientId: data.data.client_id || '',
             clientSecret: data.data.client_secret || '',
-            refreshToken: data.data.refresh_token || ''
+            refreshToken: data.data.refresh_token || '',
+            timeOffset: data.data.time_offset || '+1 hour'
           });
         } else {
           setMessage({
@@ -6130,29 +6045,24 @@ const Settings = () => {
           type: 'error'
         });
       } finally {
-        setLoading(false); // Stop loading
+        setLoading(false);
       }
     };
     fetchCredentials();
   }, []);
-
-  // Validation function
   const validateForm = () => {
     const newErrors = {};
-
-    // Validate Client ID
     if (!formData.clientId.trim()) {
       newErrors.clientId = 'Client ID is required.';
     }
-
-    // Validate Client Secret
     if (!formData.clientSecret.trim()) {
       newErrors.clientSecret = 'Client Secret is required.';
     }
-
-    // Validate Refresh Token
     if (!formData.refreshToken.trim()) {
       newErrors.refreshToken = 'Refresh Token is required.';
+    }
+    if (!formData.timeOffset) {
+      newErrors.timeOffset = 'Time offset is required.';
     }
     setErrors(newErrors);
     setMessage({
@@ -6161,8 +6071,6 @@ const Settings = () => {
     });
     return Object.keys(newErrors).length === 0;
   };
-
-  // Handle input changes
   const handleInputChange = e => {
     const {
       name,
@@ -6178,7 +6086,6 @@ const Settings = () => {
         [name]: ''
       }));
     }
-    // Clear message when user starts typing
     if (message.text) {
       setMessage({
         text: '',
@@ -6186,7 +6093,8 @@ const Settings = () => {
       });
     }
   };
-  const handleSave = async () => {
+  const handleSubmit = async e => {
+    e.preventDefault();
     if (!validateForm()) {
       return;
     }
@@ -6202,7 +6110,8 @@ const Settings = () => {
           _ajax_nonce: calendarScraperAjax.nonce,
           client_id: formData.clientId,
           client_secret: formData.clientSecret,
-          refresh_token: formData.refreshToken
+          refresh_token: formData.refreshToken,
+          time_offset: formData.timeOffset
         })
       });
       const data = await response.json();
@@ -6226,86 +6135,120 @@ const Settings = () => {
       setLoading(false);
     }
   };
+  const timeOffsetOptions = ['+1 hour', '+2 hours', '+3 hours', '+4 hours', '+5 hours', '+6 hours', '+7 hours'];
   return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
     id: "settings",
     className: "tab-section",
-    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("h3", {
-      children: "Google Settings"
-    }), loading && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
+    children: [loading && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
       className: "loader",
       children: "Loading..."
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
-      className: "form-section",
-      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
-        className: "form-control-group",
-        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("label", {
-          htmlFor: "client-id",
-          className: "form-label",
-          children: "Client ID:"
-        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("input", {
-          type: "text",
-          id: "client-id",
-          name: "clientId",
-          className: `form-input ${errors.clientId ? 'has-error' : ''}`,
-          value: formData.clientId,
-          onChange: handleInputChange,
-          placeholder: "Enter Google Client ID"
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("form", {
+      onSubmit: handleSubmit,
+      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("fieldset", {
+        className: "settings-group",
+        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("legend", {
+          children: "General Settings"
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+          className: "form-section",
+          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+            className: "form-control-group",
+            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("label", {
+              htmlFor: "time-offset",
+              className: "form-label",
+              children: "Event Duration:"
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("select", {
+              id: "time-offset",
+              name: "timeOffset",
+              className: `form-input ${errors.timeOffset ? 'has-error' : ''}`,
+              value: formData.timeOffset,
+              onChange: handleInputChange,
+              children: timeOffsetOptions.map(option => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("option", {
+                value: option,
+                children: option
+              }, option))
+            })]
+          }), errors.timeOffset && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("span", {
+            className: "error-message",
+            children: errors.timeOffset
+          })]
         })]
-      }), errors.clientId && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("span", {
-        className: "error-message",
-        children: errors.clientId
-      })]
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
-      className: "form-section",
-      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
-        className: "form-control-group",
-        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("label", {
-          htmlFor: "client-secret",
-          className: "form-label",
-          children: "Client Secret:"
-        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("input", {
-          type: "text",
-          id: "client-secret",
-          name: "clientSecret",
-          className: `form-input ${errors.clientSecret ? 'has-error' : ''}`,
-          value: formData.clientSecret,
-          onChange: handleInputChange,
-          placeholder: "Enter Google Client Secret"
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("fieldset", {
+        className: "settings-group",
+        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("legend", {
+          children: "Google Services"
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+          className: "form-section",
+          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+            className: "form-control-group",
+            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("label", {
+              htmlFor: "client-id",
+              className: "form-label",
+              children: "Client ID:"
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("input", {
+              type: "text",
+              id: "client-id",
+              name: "clientId",
+              className: `form-input ${errors.clientId ? 'has-error' : ''}`,
+              value: formData.clientId,
+              onChange: handleInputChange,
+              placeholder: "Enter Google Client ID"
+            })]
+          }), errors.clientId && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("span", {
+            className: "error-message",
+            children: errors.clientId
+          })]
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+          className: "form-section",
+          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+            className: "form-control-group",
+            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("label", {
+              htmlFor: "client-secret",
+              className: "form-label",
+              children: "Client Secret:"
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("input", {
+              type: "text",
+              id: "client-secret",
+              name: "clientSecret",
+              className: `form-input ${errors.clientSecret ? 'has-error' : ''}`,
+              value: formData.clientSecret,
+              onChange: handleInputChange,
+              placeholder: "Enter Google Client Secret"
+            })]
+          }), errors.clientSecret && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("span", {
+            className: "error-message",
+            children: errors.clientSecret
+          })]
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+          className: "form-section",
+          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+            className: "form-control-group",
+            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("label", {
+              htmlFor: "refresh-token",
+              className: "form-label",
+              children: "Refresh Token:"
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("input", {
+              type: "text",
+              id: "refresh-token",
+              name: "refreshToken",
+              className: `form-input ${errors.refreshToken ? 'has-error' : ''}`,
+              value: formData.refreshToken,
+              onChange: handleInputChange,
+              placeholder: "Enter Google Refresh Token"
+            })]
+          }), errors.refreshToken && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("span", {
+            className: "error-message",
+            children: errors.refreshToken
+          })]
         })]
-      }), errors.clientSecret && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("span", {
-        className: "error-message",
-        children: errors.clientSecret
-      })]
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
-      className: "form-section",
-      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
         className: "form-control-group",
-        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("label", {
-          htmlFor: "refresh-token",
-          className: "form-label",
-          children: "Refresh Token:"
-        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("input", {
-          type: "text",
-          id: "refresh-token",
-          name: "refreshToken",
-          className: `form-input ${errors.refreshToken ? 'has-error' : ''}`,
-          value: formData.refreshToken,
-          onChange: handleInputChange,
-          placeholder: "Enter Google Refresh Token"
-        })]
-      }), errors.refreshToken && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("span", {
-        className: "error-message",
-        children: errors.refreshToken
+        children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("button", {
+          type: "submit",
+          className: "button button-primary",
+          disabled: loading,
+          children: "Save Settings"
+        })
       })]
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
-      className: "form-control-group",
-      children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("button", {
-        type: "button",
-        className: "button button-primary",
-        onClick: handleSave,
-        disabled: loading,
-        children: "Save Settings"
-      })
     }), message.text && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
       className: `settings-message ${message.type === 'success' ? 'success-message' : 'error-message'}`,
       children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("pre", {

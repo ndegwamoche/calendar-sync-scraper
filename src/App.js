@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Swal from 'sweetalert2';
 import Logs from './Logs';
 import Colors from './Colors';
@@ -21,41 +21,23 @@ const App = () => {
     const [logInfo, setLogInfo] = useState([]);
     const regions = window.calendarScraperAjax?.regions || [];
     const ageGroups = window.calendarScraperAjax?.age_groups || [];
+    const sessionId = Date.now().toString();
 
     const validateForm = () => {
         const newErrors = {};
-
-        if (!formData.season) {
-            newErrors.season = 'Please select a season.';
-        }
-
+        if (!formData.season) newErrors.season = 'Please select a season.';
         const linkStructureRegex = /^https:\/\/www\.bordtennisportalen\.dk\/DBTU\/HoldTurnering\/Stilling\/#4,\{season\},\{pool\},\{group\},\{region\},,,,$/;
-        if (!formData.linkStructure) {
-            newErrors.linkStructure = 'Link structure is required.';
-        } else if (!linkStructureRegex.test(formData.linkStructure)) {
-            newErrors.linkStructure = 'Link structure must match the expected format.';
-        }
-
-        if (!formData.venue.trim()) {
-            newErrors.venue = 'Venue name is required.';
-        }
-
+        if (!formData.linkStructure) newErrors.linkStructure = 'Link structure is required.';
+        else if (!linkStructureRegex.test(formData.linkStructure)) newErrors.linkStructure = 'Link structure must match the expected format.';
+        if (!formData.venue.trim()) newErrors.venue = 'Venue name is required.';
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
-        if (errors[name]) {
-            setErrors((prev) => ({
-                ...prev,
-                [name]: '',
-            }));
-        }
+        setFormData((prev) => ({ ...prev, [name]: value }));
+        if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
     };
 
     useEffect(() => {
@@ -64,9 +46,7 @@ const App = () => {
                 try {
                     const response = await fetch(`${calendarScraperAjax.ajax_url}?action=get_log_info&_ajax_nonce=${calendarScraperAjax.nonce}`, {
                         method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     });
                     const data = await response.json();
                     if (data.success) {
@@ -74,7 +54,6 @@ const App = () => {
                             const duration = log.close_datetime
                                 ? Math.floor((new Date(log.close_datetime) - new Date(log.start_datetime)) / 1000)
                                 : null;
-
                             return {
                                 id: log.id,
                                 message: `Scraper run for season ${log.season_id}, status: ${log.status}, matches: ${log.total_matches}`,
@@ -96,203 +75,130 @@ const App = () => {
                     setLogInfo([]);
                 }
             };
-
             fetchLogInfo();
         }
     }, [activeTab]);
 
-    // Handle scraper run for all regions and age groups
-    const handleRunScraper = async () => {
+    const debounce = (func, wait) => {
+        let timeout;
+        return (...args) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func(...args), wait);
+        };
+    };
+
+    async function get_scraper_progress(sessionId) {
+        try {
+            const response = await fetch(`${calendarScraperAjax.ajax_url}?action=get_scraper_progress&session_id=${encodeURIComponent(sessionId)}&total_matches=175`);
+            const data = await response.json();
+
+            if (data.success) {
+                return data.data;
+            } else {
+                return null;
+            }
+        } catch (error) {
+            return null;
+        }
+    }
+
+    const handleRunAllScrapers = useCallback(async () => {
         if (!validateForm()) {
             setLog({ message: 'Please fix the errors in the form.', matches: [] });
             return;
         }
 
-        // Create combinations of regions and age groups
-        const regionAgeGroupCombinations = [];
-        for (const region of regions) {
-            for (const ageGroup of ageGroups) {
-                regionAgeGroupCombinations.push({ region, ageGroup });
-            }
-        }
-
-        // Confirmation for large scraping tasks
-        const totalCombinations = regionAgeGroupCombinations.length;
-        if (totalCombinations > 10) {
-            const result = await Swal.fire({
-                title: 'Large Scraping Task',
-                text: `You are about to scrape all region and age group combinations. This may take a while. Continue?`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#3085d6',
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Yes, proceed',
-                cancelButtonText: 'Cancel',
-            });
-
-            if (!result.isConfirmed) {
-                setLog({ message: 'Scraping cancelled by user.', matches: [] });
-                return;
-            }
-        }
-
-        setIsRunning(true);
-        setLog({ message: 'Starting scraper for all regions and age groups...', matches: [] });
-        setProgress(0);
+        const result = await Swal.fire({
+            title: 'Large Scraping Task',
+            text: `You are about to scrape all region and age group combinations. This may take a while. Continue?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, proceed',
+            cancelButtonText: 'Cancel',
+        });
 
         let allMatches = [];
-        let completedRequests = 0;
-        const sessionId = Date.now().toString();
-        let totalPools = 0;
 
-        try {
-            // Loop through all regions and age groups
-            for (const { region, ageGroup } of regionAgeGroupCombinations) {
-                setLog(prevLog => ({
-                    ...prevLog,
-                    message: `Fetching ${formData.season} | Region: ${region.region_name} | Age Group: ${ageGroup.age_group_name} - fetching...`,
-                    matches: allMatches,
-                }));
+        if (!result.isConfirmed) {
+            setLog({ message: 'Scraping cancelled by user.', matches: [] });
+            return;
+        } else {
 
-                // Fetch pools for the current region and age group
-                const response = await fetch(
-                    `${calendarScraperAjax.ajax_url}?action=get_tournament_options&season=${formData.season}&region=${region.region_value}&age_group=${ageGroup.age_group_value}&_ajax_nonce=${calendarScraperAjax.nonce}`,
-                    {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                    }
-                );
-                const poolData = await response.json();
-
-                let currentPools = [];
-                if (poolData.success) {
-                    currentPools = poolData.data.pools || [];
-                    totalPools += currentPools.length;
-                } else {
-                    setLog(prevLog => ({
-                        ...prevLog,
-                        message: `Failed to fetch pools for region ${region.region_name} (${region.region_value}), age group ${ageGroup.age_group_name}: ${poolData.data?.message || 'Unknown error'}`,
-                        matches: allMatches,
-                    }));
-                    continue;
-                }
-
-                if (currentPools.length === 0) {
-                    setLog(prevLog => ({
-                        ...prevLog,
-                        message: `No pools found for region ${region.region_name} (${region.region_value}), age group ${ageGroup.age_group_name}`,
-                        matches: allMatches,
-                    }));
-                    completedRequests++;
-                    setProgress((completedRequests / totalCombinations) * 100);
-                    continue;
-                }
-
-                // Scrape each pool for the current region and age group
-                for (const pool of currentPools) {
-                    setLog(prevLog => ({
-                        ...prevLog,
-                        message: `<strong>Season</strong> ${pool.season_name} | Region: ${region.region_name} | Age Group: ${ageGroup.age_group_name} | ` +
-                            `Tournament Level: ${pool.tournament_level} | Pool: ${pool.pool_name} - scraping...`,
-                        matches: allMatches,
-                    }));
-
-                    const response = await fetch(calendarScraperAjax.ajax_url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: new URLSearchParams({
-                            action: 'run_calendar_scraper',
-                            _ajax_nonce: calendarScraperAjax.nonce,
-                            season: formData.season,
-                            link_structure: formData.linkStructure,
-                            venue: formData.venue,
-                            region: region.region_value,
-                            age_group: ageGroup.age_group_value,
-                            age_group_name: ageGroup.age_group_name,
-                            region_name: region.region_name,
-                            season_name: pool.season_name,
-                            pool: pool.pool_value,
-                            pool_name: pool.pool_name,
-                            tournament_level: pool.tournament_level,
-                            color_id: pool.google_color_id,
-                            session_id: sessionId,
-                            total_pools: totalPools,
-                        }),
-                    });
-
-                    const data = await response.json();
-
-                    if (data.success) {
-                        if (data.data.error) {
-                            setLog(prevLog => ({
-                                ...prevLog,
-                                message: `Error in pool ${pool.pool_value}: ${data.data.error}`,
-                                matches: allMatches,
-                            }));
-                        } else if (Array.isArray(data.data.message) && data.data.message.length === 0) {
-                            setLog(prevLog => ({
-                                ...prevLog,
-                                message: `No matches found for pool ${pool.pool_value} at venue ${formData.venue}`,
-                                matches: allMatches,
-                            }));
-                        } else {
-                            allMatches = [...allMatches, ...data.data.message];
-                            setLog({
-                                message: `Completed scraping pool ${pool.tournament_level} - ${pool.pool_name} (${pool.pool_value}) for region ${region.region_name}, age group ${ageGroup.age_group_name}`,
-                                matches: allMatches,
-                            });
-                        }
-                    } else {
-                        setLog(prevLog => ({
-                            ...prevLog,
-                            message: `Error in pool ${pool.pool_value}: ${data.data?.message || 'Something went wrong.'}`,
-                            matches: allMatches,
-                        }));
-                    }
-
-                    completedRequests++;
-                    setProgress((completedRequests / totalPools) * 100);
-                }
-            }
-
-            // Signal completion to backend
-            await fetch(calendarScraperAjax.ajax_url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({
-                    action: 'complete_scraper_log',
-                    _ajax_nonce: calendarScraperAjax.nonce,
-                    session_id: sessionId,
-                }),
-            });
-
-            if (allMatches.length === 0) {
-                setLog({
-                    message: `No matches found for any pools at venue ${formData.venue}`,
-                    matches: [],
-                });
-            } else {
-                setLog({
-                    message: `All regions, age groups, and pools scraped successfully! Found ${allMatches.length} matches`,
-                    matches: allMatches,
-                });
-            }
-        } catch (error) {
-            setLog({
-                message: `Error: ${error.message}`,
-                matches: allMatches,
-            });
+            setIsRunning(true);
+            setLog({ message: 'Starting scraper for all regions and age groups...', matches: [] });
             setProgress(0);
-        } finally {
-            setIsRunning(false);
-        }
-    };
 
-    // Handle clearing matches
+            const intervalId = setInterval(async () => {
+                const progressData = await get_scraper_progress(sessionId);
+                if (!progressData || progressData.status === 'completed') {
+                    clearInterval(intervalId);
+                    setProgress(100);
+                    return;
+                }
+                setProgress(progressData.progress);
+                setLog({
+                    message: progressData.message,
+                    matches: allMatches,
+                });
+            }, 1000);
+
+            const sessionId = Date.now().toString();
+
+            try {
+                const response = await fetch(calendarScraperAjax.ajax_url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        action: 'run_all_calendar_scraper',
+                        _ajax_nonce: calendarScraperAjax.nonce,
+                        season: formData.season,
+                        link_structure: formData.linkStructure,
+                        venue: formData.venue,
+                        session_id: sessionId,
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const matches = data.data.matches;
+
+                    if (matches.length === 0) {
+                        setLog({
+                            message: `No matches found`,
+                            matches: allMatches,
+                        });
+                        setProgress(100);
+                        setIsRunning(false);
+                    } else {
+                        allMatches = [...allMatches, ...matches];
+                        setLog({
+                            message: `✅ Scraping completed! Found ${matches.length} matches`,
+                            matches: allMatches,
+                        });
+                        setProgress(100);
+                        setIsRunning(false);
+                    }
+                } else {
+                    setLog({
+                        message: `❌ Error ${data.data?.message || 'Something went wrong.'}`,
+                        matches: allMatches,
+                    });
+                    setProgress(0);
+                    setIsRunning(false);
+                }
+
+            } catch (error) {
+                setLog({ message: `Error: ${error.message}`, matches: [] });
+                setProgress(0);
+                setIsRunning(false);
+            }
+        }
+
+    }, [formData]);
+
     const handleClearMatches = async () => {
         const result = await Swal.fire({
             title: 'Are you sure?',
@@ -338,40 +244,28 @@ const App = () => {
                     <a
                         href="#main"
                         className={`nav-tab ${activeTab === 'main' ? 'nav-tab-active' : ''}`}
-                        onClick={(e) => {
-                            e.preventDefault();
-                            setActiveTab('main');
-                        }}
+                        onClick={(e) => { e.preventDefault(); setActiveTab('main'); }}
                     >
                         Main
                     </a>
                     <a
                         href="#sheet-colors"
                         className={`nav-tab ${activeTab === 'sheet-colors' ? 'nav-tab-active' : ''}`}
-                        onClick={(e) => {
-                            e.preventDefault();
-                            setActiveTab('sheet-colors');
-                        }}
+                        onClick={(e) => { e.preventDefault(); setActiveTab('sheet-colors'); }}
                     >
                         Sheet Colors
                     </a>
                     <a
                         href="#log-state"
                         className={`nav-tab ${activeTab === 'log-state' ? 'nav-tab-active' : ''}`}
-                        onClick={(e) => {
-                            e.preventDefault();
-                            setActiveTab('log-state');
-                        }}
+                        onClick={(e) => { e.preventDefault(); setActiveTab('log-state'); }}
                     >
                         Log State
                     </a>
                     <a
                         href="#settings"
                         className={`nav-tab ${activeTab === 'settings' ? 'nav-tab-active' : ''}`}
-                        onClick={(e) => {
-                            e.preventDefault();
-                            setActiveTab('settings');
-                        }}
+                        onClick={(e) => { e.preventDefault(); setActiveTab('settings'); }}
                     >
                         Settings
                     </a>
@@ -439,7 +333,7 @@ const App = () => {
                                         type="button"
                                         id="run-scraper-now"
                                         className="button button-primary"
-                                        onClick={handleRunScraper}
+                                        onClick={handleRunAllScrapers}
                                         disabled={isRunning || isClearing}
                                     >
                                         {isRunning ? 'Running...' : 'Run Scraper Now'}
@@ -457,13 +351,24 @@ const App = () => {
 
                                 {(isRunning || isClearing) && (
                                     <div id="scraper-progress">
-                                        {isRunning && <progress value={progress} max="100"></progress>}
+                                        {isRunning && (
+                                            <>
+                                                <progress value={progress} max="100"></progress>
+                                                <span>{progress}%</span>
+                                            </>
+                                        )}
                                         {isClearing && <div className="loader">Clearing...</div>}
                                     </div>
                                 )}
 
                                 <div id="scraper-log" className="scraper-log">
-                                    {log.message && <pre>{log.message}</pre>}
+                                    {log.message && (
+                                        <pre
+                                            dangerouslySetInnerHTML={{
+                                                __html: log.message.replace(/\\n/g, '\n'),
+                                            }}
+                                        />
+                                    )}
                                     {log.matches.length > 0 ? (
                                         <ul>
                                             {log.matches.map((match, index) => (

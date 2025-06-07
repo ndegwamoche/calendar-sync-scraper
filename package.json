@@ -11,6 +11,7 @@
   "description": "Scrapes calendar data from a specified URL and syncs it to Google Calendar. Supports automated scheduling and logs each run for tracking.",
   "dependencies": {
     "@wordpress/scripts": "^30.16.0",
-    "sweetalert2": "^11.22.0"
+    "sweetalert2": "^11.22.0",
+    "ws": "^8.18.2"
   }
 }

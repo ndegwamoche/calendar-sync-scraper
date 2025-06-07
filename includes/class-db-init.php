@@ -48,6 +48,7 @@ class DB_Init
             id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
             region_name VARCHAR(100) NOT NULL,
             region_value INT NOT NULL,
+            region_order TINYINT(1) DEFAULT 0,
             PRIMARY KEY (id),
             UNIQUE KEY region_value (region_value)
         ) $charset_collate;";
@@ -93,6 +94,7 @@ class DB_Init
         // Logs table
         $sql = "CREATE TABLE IF NOT EXISTS {$this->logs_table} (
             id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            session_id VARCHAR(255) DEFAULT NULL, 
             start_datetime DATETIME NOT NULL,
             close_datetime DATETIME DEFAULT NULL,
             season_id BIGINT(20) UNSIGNED NOT NULL,
@@ -184,7 +186,7 @@ class DB_Init
 
         // Insert Regions
         $regions = [
-            ['region_name' => 'Bordtennis Danmark/DT', 'region_value' => 4000],
+            ['region_name' => 'Bordtennis Danmark/DT', 'region_value' => 4000, 'region_order' => 1],
             ['region_name' => 'DGI', 'region_value' => 4005],
             ['region_name' => 'BORNHOLM', 'region_value' => 4001],
             ['region_name' => 'DGI Bornholm', 'region_value' => 4006],
@@ -193,7 +195,7 @@ class DB_Init
             ['region_name' => 'DGI Sjælland', 'region_value' => 4010],
             ['region_name' => 'MIDT (Fyn)', 'region_value' => 4002],
             ['region_name' => 'VEST (Jylland)', 'region_value' => 4003],
-            ['region_name' => 'ØST (Sjælland, Lolland F.)', 'region_value' => 4004],
+            ['region_name' => 'ØST (Sjælland, Lolland F.)', 'region_value' => 4004, 'region_order' => 1],
         ];
         foreach ($regions as $region) {
             $wpdb->replace($this->regions_table, $region);

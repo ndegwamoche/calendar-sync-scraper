@@ -98,8 +98,8 @@ const Logs = ({ logInfo }) => {
                                         <tr className="log-details">
                                             <td colSpan="6">
                                                 <div className="log-details-content">
-                                                    {detailsData.content.split('\\n').map((line, index) => (
-                                                        <p key={index}>{line}</p>
+                                                    {detailsData.content.split('\n').map((line, index) => (
+                                                        <p key={index} dangerouslySetInnerHTML={{ __html: line }} />
                                                     ))}
                                                 </div>
                                             </td>

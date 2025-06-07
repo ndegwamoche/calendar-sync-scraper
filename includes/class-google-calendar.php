@@ -18,6 +18,7 @@ class Google_Calendar_Sync
     private $client_secret;
     private $refresh_token;
     private $calendar_id;
+    private $time_offset;
 
     public function __construct()
     {
@@ -25,6 +26,7 @@ class Google_Calendar_Sync
         $this->client_secret = get_option('cal_sync_client_secret');
         $this->refresh_token = get_option('cal_sync_refresh_token');
         $this->calendar_id = 'primary';
+        $this->time_offset = get_option('cal_sync_time_offset');
 
         // Validate that the credentials exist
         if (!$this->client_id || !$this->client_secret || !$this->refresh_token) {
@@ -67,17 +69,25 @@ class Google_Calendar_Sync
 
     private function parseTidToDateTime(string $tid): string
     {
-        // Remove weekday and normalize dash characters
-        $tid = preg_replace('/^\w+\s+/', '', $tid); // e.g., "ti 15‑10‑2024 19:30" -> "15‑10‑2024 19:30"
-        $tid = str_replace(['‑', '–'], '-', $tid);  // Normalize dashes
+        // Remove Danish weekday abbreviations (e.g., 'sø', 'ma', 'ti', etc.) and normalize
+        $tid = preg_replace('/^(ma|ti|on|to|fr|lø|sø)\s+/i', '', trim($tid));
+        $tid = str_replace(['‑', '–'], '-', $tid); // Normalize dashes
 
-        $dateTime = \DateTime::createFromFormat('d-m-Y H:i', $tid, new \DateTimeZone('Europe/Copenhagen'));
+        try {
+            $dateTime = \DateTime::createFromFormat(
+                'd-m-Y H:i', // Format: DD-MM-YYYY HH:MM (24-hour)
+                $tid,
+                new \DateTimeZone('Europe/Copenhagen')
+            );
 
-        if (!$dateTime) {
-            throw new \Exception("Invalid datetime format: $tid");
+            if ($dateTime === false) {
+                throw new \Exception("Invalid datetime format: '$tid'");
+            }
+
+            return $dateTime->format(\DateTime::RFC3339);
+        } catch (\Exception $e) {
+            throw new \Exception("Failed to parse datetime '$tid': " . $e->getMessage());
         }
-
-        return $dateTime->format(\DateTime::RFC3339);
     }
 
     public function insertMatches($matches, $season_name, $region_name, $age_group_name, $pool_name, $tournament_level, $color_id, $season, $region, $ageGroup, $pool)
@@ -86,7 +96,7 @@ class Google_Calendar_Sync
             try {
                 $startDateTime = $this->parseTidToDateTime($match['tid']);
 
-                $endDateTime = (new \DateTime($startDateTime))->modify('+3 hours')->format(\DateTime::RFC3339);
+                $endDateTime = (new \DateTime($startDateTime))->modify($this->time_offset)->format(\DateTime::RFC3339);
 
                 $description = "<strong>{$region_name} {$season_name}</strong><br>" .
                     "<a href='https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#3,{$season},{$pool},{$ageGroup},{$region},{$match['hjemmehold_id']},,4203'>$tournament_level $pool_name</a><br><br>" .
@@ -162,8 +172,9 @@ class Google_Calendar_Sync
         $clientId = sanitize_text_field($_POST['client_id']);
         $clientSecret = sanitize_text_field($_POST['client_secret']);
         $refreshToken = sanitize_text_field($_POST['refresh_token']);
+        $time_offset = sanitize_text_field($_POST['time_offset']);
 
-        if (!$clientId || !$clientSecret || !$refreshToken) {
+        if (!$clientId || !$clientSecret || !$refreshToken || !$time_offset) {
             wp_send_json_error(['message' => 'All fields are required.']);
             return;
         }
@@ -171,6 +182,7 @@ class Google_Calendar_Sync
         update_option('cal_sync_client_id', $clientId);
         update_option('cal_sync_client_secret', $clientSecret);
         update_option('cal_sync_refresh_token', $refreshToken);
+        update_option('cal_sync_time_offset', $time_offset);
 
         wp_send_json_success(['message' => 'Credentials saved successfully.']);
     }
@@ -180,11 +192,13 @@ class Google_Calendar_Sync
         $clientId = get_option('cal_sync_client_id', '');
         $clientSecret = get_option('cal_sync_client_secret', '');
         $refreshToken = get_option('cal_sync_refresh_token', '');
+        $timeOffset = get_option('cal_sync_time_offset', '');
 
         wp_send_json_success([
             'client_id' => $clientId,
             'client_secret' => $clientSecret,
             'refresh_token' => $refreshToken,
+            'time_offset' => $timeOffset,
         ]);
     }
 

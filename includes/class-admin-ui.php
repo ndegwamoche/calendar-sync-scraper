@@ -26,6 +26,8 @@ class Admin_UI
         add_action('admin_menu', [$this, 'register_admin_page']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('wp_ajax_run_calendar_scraper', [$this->scraper, 'run_scraper']);
+        add_action('wp_ajax_run_all_calendar_scraper', [$this->scraper, 'run_all_calendar_scraper']);
+        add_action('wp_ajax_get_scraper_progress', [$this->scraper, 'get_scraper_progress']);
         add_action('wp_ajax_get_tournament_options', [$this, 'get_tournament_options']);
         add_action('wp_ajax_get_log_info', [$this->logger, 'get_log_info']);
         add_action('wp_ajax_get_log_info', [$this->logger, 'complete_log']);

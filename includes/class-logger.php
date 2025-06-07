@@ -15,7 +15,7 @@ class Logger
         $this->logs_table = $wpdb->prefix . 'cal_sync_logs';
     }
 
-    public function start_log($season_id, $region_id, $age_group_id, $pool_id, $session_id)
+    public function start_log($season_id, $region_id, $age_group_id, $pool_id, $session_id, $message = '')
     {
         $this->wpdb->insert(
             $this->logs_table,
@@ -27,7 +27,8 @@ class Logger
                 'pool_id' => $pool_id,
                 'status' => 'running',
                 'total_matches' => 0,
-                'session_id' => $session_id
+                'session_id' => $session_id,
+                'error_message' => is_array($message) ? serialize($message) : $message
             ]
         );
         return $this->wpdb->insert_id;
@@ -39,7 +40,7 @@ class Logger
             $this->wpdb->prefix . 'cal_sync_logs',
             [
                 'total_matches' => $total_matches,
-                'error_message' => serialize($error_message), // Serialize the array of messages
+                'error_message' => is_array($error_message) ? serialize($error_message) : $error_message,
                 'status' => $status,
                 'close_datetime' => ($status === 'completed' || $status === 'failed') ? current_time('mysql') : null,
             ],

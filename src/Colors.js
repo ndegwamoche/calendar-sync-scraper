@@ -32,7 +32,6 @@ const Colors = ({ season, url, regions, ageGroups }) => {
                 if (data.success) {
                     const levels = Array.isArray(data.data) ? data.data : [];
                     setAllLevels(levels);
-                    console.log('All levels:', levels);
                 } else {
                     console.error('Failed to fetch all levels:', data.data?.message || 'Unknown error');
                 }
@@ -604,14 +603,14 @@ const Colors = ({ season, url, regions, ageGroups }) => {
 
 
             <div className="form-section button-group" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <button
+                {/* <button
                     type="button"
                     className="button button-primary"
                     onClick={handleScrapingPools}
                     disabled={isScraping}
                 >
                     {isScraping ? 'Running...' : 'Run Pools Scraping'}
-                </button>
+                </button> */}
                 <button
                     type="button"
                     className="button button-secondary"
