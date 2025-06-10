@@ -41,12 +41,18 @@ class Events_Calendar_Sync
                     'post_content' => $description,
                     'post_status' => 'publish',
                     'meta_input' => [
-                        '_EventStartDate' => $startDateTime,
-                        '_EventEndDate' => $endDateTime,
-                        '_EventVenueID' => 209,
-                        '_EventOrganizerID' => 206,
-                        '_EventCost' => 0,
-                        '_tribe_event_color' => $event_color,
+                        '_EventStartDate'      => $startDateTime,         // Local time
+                        '_EventEndDate'        => $endDateTime,           // Local time
+                        '_EventStartDateUTC'   => gmdate('Y-m-d H:i:s', strtotime($startDateTime)), // UTC
+                        '_EventEndDateUTC'     => gmdate('Y-m-d H:i:s', strtotime($endDateTime)),   // UTC
+                        '_EventVenueID'        => 209,
+                        '_EventOrganizerID'    => 206,
+                        '_EventCost'           => 0,
+                        '_tribe_event_color'   => $event_color,
+                        '_EventOrigin'         => 'events-calendar',
+                        '_EventShowMap'        => 'TRUE',
+                        '_EventTimezone'       => 'UTC',              // Or 'Africa/Nairobi'
+                        '_EventTimezoneAbbr'   => 'UTC',
                     ]
                 ];
 
