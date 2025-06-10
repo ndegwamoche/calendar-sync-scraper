@@ -105,7 +105,8 @@ class DB_Init
             error_message TEXT DEFAULT NULL,
             total_matches INT DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (id)
+            PRIMARY KEY (id),
+            UNIQUE KEY session_id_unique (session_id)
         ) $charset_collate;";
         dbDelta($sql);
 

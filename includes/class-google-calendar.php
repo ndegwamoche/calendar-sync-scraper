@@ -213,8 +213,31 @@ class Google_Calendar_Sync
                 $events = $this->service->events->listEvents($this->calendar_id, $optParams);
 
                 foreach ($events->getItems() as $event) {
-                    $this->service->events->delete($this->calendar_id, $event->getId());
-                    $eventsCleared++;
+                    $retry = 0;
+                    $maxRetries = 5;
+                    $deleted = false;
+
+                    while (!$deleted && $retry < $maxRetries) {
+                        try {
+                            $this->service->events->delete($this->calendar_id, $event->getId());
+                            $eventsCleared++;
+                            $deleted = true;
+
+                            // Small delay between deletions to avoid rate limits
+                            usleep(200000); // 200ms
+                        } catch (\Google\Service\Exception $e) {
+                            if ($e->getCode() === 403 && strpos($e->getMessage(), 'Rate Limit Exceeded') !== false) {
+                                // Exponential backoff
+                                $wait = pow(2, $retry) * 500000; // e.g. 0.5s, 1s, 2s, etc.
+                                usleep($wait);
+                                $retry++;
+                            } else {
+                                // Other error: log and break retry
+                                error_log("Failed to delete event ID {$event->getId()}: " . $e->getMessage());
+                                break;
+                            }
+                        }
+                    }
                 }
 
                 $pageToken = $events->getNextPageToken();

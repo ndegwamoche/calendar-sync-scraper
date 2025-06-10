@@ -4832,6 +4832,7 @@ const App = () => {
       });
       return;
     } else {
+      const sessionId = Date.now().toString();
       setIsRunning(true);
       setLog({
         message: 'Starting scraper for all regions and age groups...',
@@ -4851,7 +4852,6 @@ const App = () => {
           matches: allMatches
         });
       }, 1000);
-      const sessionId = Date.now().toString();
       try {
         const response = await fetch(calendarScraperAjax.ajax_url, {
           method: 'POST',
