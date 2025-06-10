@@ -32,7 +32,7 @@ class Scraper
     private function init_driver()
     {
         if (!$this->driver) {
-            $serverUrl = 'http://localhost:9515';
+            $serverUrl = 'http://localhost:63995';
             $capabilities = DesiredCapabilities::chrome();
             $capabilities->setCapability('goog:chromeOptions', [
                 'args' => [
@@ -401,8 +401,8 @@ class Scraper
                     $response['success'] = true;
                     $log_data['messages'][] = "Season: $season_name, Region: $region_name, Age Group: $age_group_name -> Pool $tournament_level - $pool_name ($poolValue): <strong>Found $total_matches matches</strong>";
 
-                    $google_calendar_sync = new Google_Calendar_Sync();
-                    $google_calendar_sync->insertMatches(
+                    $events_calendar_sync = new Events_Calendar_Sync();
+                    $events_calendar_sync->insertMatches(
                         $matches,
                         $season_name,
                         $region_name,
@@ -415,6 +415,21 @@ class Scraper
                         $ageGroup,
                         $poolValue
                     );
+
+                    // $google_calendar_sync = new Google_Calendar_Sync();
+                    // $google_calendar_sync->insertMatches(
+                    //     $matches,
+                    //     $season_name,
+                    //     $region_name,
+                    //     $age_group_name,
+                    //     $pool_name,
+                    //     $tournament_level,
+                    //     $google_color_id,
+                    //     $season,
+                    //     $region,
+                    //     $ageGroup,
+                    //     $poolValue
+                    // );
 
                     $response['data']['matches'] = array_merge($response['data']['matches'], $matches);
                 }

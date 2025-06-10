@@ -203,7 +203,7 @@ class Data_Loader
                     AND tl.region_id = tp.region_id 
                     AND tl.age_group_id = tp.age_group_id
                 WHERE
-                    tp.season_id = %d",
+                    tp.season_id = %d LIMIT 5",
                 $season_id,
             ),
             ARRAY_A

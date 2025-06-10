@@ -16,10 +16,10 @@ define('CAL_SYNC_SCRAPER_URL', plugin_dir_url(__FILE__));
 require_once CAL_SYNC_SCRAPER_PATH . 'includes/class-admin-ui.php';
 require_once CAL_SYNC_SCRAPER_PATH . 'includes/class-scraper.php';
 require_once CAL_SYNC_SCRAPER_PATH . 'includes/class-logger.php';
-require_once CAL_SYNC_SCRAPER_PATH . 'includes/class-scheduler.php';
 require_once CAL_SYNC_SCRAPER_PATH . 'includes/class-db-init.php';
 require_once CAL_SYNC_SCRAPER_PATH . 'includes/class-data-loader.php';
 require_once CAL_SYNC_SCRAPER_PATH . 'includes/class-google-calendar.php';
+require_once CAL_SYNC_SCRAPER_PATH . 'includes/class-events-calendar.php';
 
 // Instantiate DB_Init
 $db_init = new Calendar_Sync_Scraper\DB_Init();
@@ -31,5 +31,4 @@ register_activation_hook(__FILE__, array($db_init, 'insert_initial_data'));
 // Hook into plugins_loaded to initialize other classes
 add_action('plugins_loaded', function () {
     new Calendar_Sync_Scraper\Admin_UI();
-    new Calendar_Sync_Scraper\Scheduler();
 });

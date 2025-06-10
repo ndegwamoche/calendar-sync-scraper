@@ -8,6 +8,7 @@ class Admin_UI
     private $scraper;
     private $logger;
     private $google_calendar;
+    private $events_calendar;
 
     public function __construct()
     {
@@ -23,8 +24,12 @@ class Admin_UI
         //Instantiate Google Calendar Sync
         $this->google_calendar = new Google_Calendar_Sync();
 
+        // Instantiate Events Calendar Sync
+        $this->events_calendar = new Events_Calendar_Sync();
+
         add_action('admin_menu', [$this, 'register_admin_page']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
+
         add_action('wp_ajax_run_calendar_scraper', [$this->scraper, 'run_scraper']);
         add_action('wp_ajax_run_all_calendar_scraper', [$this->scraper, 'run_all_calendar_scraper']);
         add_action('wp_ajax_get_scraper_progress', [$this->scraper, 'get_scraper_progress']);
