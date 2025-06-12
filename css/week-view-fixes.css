@@ -9,6 +9,7 @@
     border-radius: 28px;
     padding-bottom: 0px !important;
     padding-top: 40px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
 }
 
 .tribe-common a {
@@ -21,4 +22,43 @@
 
 .tribe-common.tribe-common--breakpoint-medium button.tribe-events-c-top-bar__datepicker-button {
     font-size: 18px !important;
+}
+
+.tribe-events-pro .tribe-events-pro-week-grid__time-slot {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 0px !important;
+    /* Reduced gap to 0px, adjust as needed */
+    width: 100% !important;
+    position: relative !important;
+}
+
+.tribe-events-pro .tribe-events-pro-week-grid__event {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+    position: relative !important;
+}
+
+.tribe-events-pro .tribe-events-pro-week-grid__event--seq-1,
+.tribe-events-pro .tribe-events-pro-week-grid__event--seq-2,
+.tribe-events-pro .tribe-events-pro-week-grid__event--seq-3,
+.tribe-events-pro .tribe-events-pro-week-grid__event--seq-4,
+.tribe-events-pro .tribe-events-pro-week-grid__event--seq-5,
+.tribe-events-pro .tribe-events-pro-week-grid__event--seq-6,
+.tribe-events-pro .tribe-events-pro-week-grid__event--seq-7,
+.tribe-events-pro .tribe-events-pro-week-grid__event--seq-8 {
+    width: auto !important;
+}
+
+.tribe-events-pro .tribe-events-pro-week-grid__event-link {
+    border: 0.01rem solid #ffffff !important;
+}
+
+.tribe-events .tribe-events-calendar-month__day--past .tribe-events-calendar-month__day-date {
+    opacity: 1 !important;
+}
+
+.tribe-events .tribe-events-calendar-month__day--past .tribe-events-calendar-month__calendar-event {
+    opacity: 1 !important;
 }

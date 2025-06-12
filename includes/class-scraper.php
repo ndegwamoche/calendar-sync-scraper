@@ -31,7 +31,7 @@ class Scraper
     private function init_driver()
     {
         if (!$this->driver) {
-            $serverUrl = 'http://localhost:63995';
+            $serverUrl = 'http://localhost:9515';
             $capabilities = DesiredCapabilities::chrome();
             $capabilities->setCapability('goog:chromeOptions', [
                 'args' => [

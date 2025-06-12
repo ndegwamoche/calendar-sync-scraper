@@ -120,7 +120,7 @@ class Events_Calendar_Sync
     {
         $row = $this->wpdb->get_row(
             $this->wpdb->prepare(
-                "SELECT hex_code, font_hex_code FROM {$this->colors_table} WHERE id = %d LIMIT 1",
+                "SELECT hex_code FROM {$this->colors_table} WHERE id = %d LIMIT 1",
                 $color_id
             ),
             ARRAY_A
@@ -128,7 +128,7 @@ class Events_Calendar_Sync
 
         return [
             'background' => $row['hex_code'] ?? '#039be5',
-            'font'       => $row['font_hex_code'] ?? '#FFFFFF', // default to black
+            'font'       => '#FFFFFF',
         ];
     }
 
