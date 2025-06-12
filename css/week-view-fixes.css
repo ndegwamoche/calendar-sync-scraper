@@ -1,0 +1,14 @@
+.tribe-events-view.alignwide {
+    background-color: #F0F4F9 !important;
+    padding: 40px 0px;
+}
+
+.tribe-common--breakpoint-medium.tribe-events .tribe-events-l-container {
+    min-height: 700px;
+    background: #ffffff;
+    border-radius: 28px;
+}
+
+.tribe-common a {
+    color: #007CBA !important;
+}

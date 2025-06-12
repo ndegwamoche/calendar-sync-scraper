@@ -206,46 +206,21 @@ class Google_Calendar_Sync
     {
         try {
             $pageToken = null;
-            $eventsCleared = 0;
-
             do {
                 $optParams = ['pageToken' => $pageToken];
                 $events = $this->service->events->listEvents($this->calendar_id, $optParams);
 
                 foreach ($events->getItems() as $event) {
-                    $retry = 0;
-                    $maxRetries = 5;
-                    $deleted = false;
-
-                    while (!$deleted && $retry < $maxRetries) {
-                        try {
-                            $this->service->events->delete($this->calendar_id, $event->getId());
-                            $eventsCleared++;
-                            $deleted = true;
-
-                            // Small delay between deletions to avoid rate limits
-                            usleep(200000); // 200ms
-                        } catch (\Google\Service\Exception $e) {
-                            if ($e->getCode() === 403 && strpos($e->getMessage(), 'Rate Limit Exceeded') !== false) {
-                                // Exponential backoff
-                                $wait = pow(2, $retry) * 500000; // e.g. 0.5s, 1s, 2s, etc.
-                                usleep($wait);
-                                $retry++;
-                            } else {
-                                // Other error: log and break retry
-                                error_log("Failed to delete event ID {$event->getId()}: " . $e->getMessage());
-                                break;
-                            }
-                        }
-                    }
+                    $this->service->events->delete($this->calendar_id, $event->getId());
                 }
 
                 $pageToken = $events->getNextPageToken();
             } while ($pageToken);
 
-            wp_send_json_success(['message' => "Successfully cleared $eventsCleared calendar events."]);
+            return true;
         } catch (\Exception $e) {
-            wp_send_json_error(['message' => 'Failed to clear calendar events: ' . $e->getMessage()]);
+            error_log('Failed to clear calendar events: ' . $e->getMessage());
+            return false;
         }
     }
 }

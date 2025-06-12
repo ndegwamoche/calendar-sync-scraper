@@ -12,23 +12,18 @@ class Admin_UI
 
     public function __construct()
     {
-        // Instantiate Data_Loader
         $this->data_loader = new Data_Loader();
-
-        // Instantiate Scraper
         $this->scraper = new Scraper();
-
-        // Instantiate Logger
         $this->logger = new Logger();
-
-        //Instantiate Google Calendar Sync
         $this->google_calendar = new Google_Calendar_Sync();
-
-        // Instantiate Events Calendar Sync
         $this->events_calendar = new Events_Calendar_Sync();
 
         add_action('admin_menu', [$this, 'register_admin_page']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
+
+        add_action('wp_print_footer_scripts', function () {
+            echo '<link rel="stylesheet" href="' . esc_url(CAL_SYNC_SCRAPER_URL . 'css/week-view-fixes.css') . '?v=' . filemtime(CAL_SYNC_SCRAPER_PATH . 'css/week-view-fixes.css') . '" type="text/css" media="all">';
+        }, 100);
 
         add_action('wp_ajax_run_calendar_scraper', [$this->scraper, 'run_scraper']);
         add_action('wp_ajax_run_all_calendar_scraper', [$this->scraper, 'run_all_calendar_scraper']);

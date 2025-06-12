@@ -18,7 +18,6 @@ class Scraper
     private $logger;
     private $loader;
     private $driver;
-    private $batch_size = 1; // Number of concurrent scrapes; adjust based on server capacity
 
     public function __construct()
     {
@@ -66,194 +65,6 @@ class Scraper
             }
             $this->driver = null;
         }
-    }
-
-    public function run_scraper()
-    {
-        set_time_limit(0);
-
-        register_shutdown_function(function () use (&$log_id) {
-            $error = error_get_last();
-            if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
-                $message = 'Fatal error: ' . $error['message'];
-                if (isset($log_id)) {
-                    $logger = new \Calendar_Sync_Scraper\Logger();
-                    $logger->update_log($log_id, 0, $message);
-                }
-                $this->quit_driver();
-                if (!headers_sent()) {
-                    header('Content-Type: application/json');
-                }
-                echo json_encode(['success' => false, 'data' => ['message' => $message]]);
-                exit;
-            }
-        });
-
-        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
-
-        $response = ['success' => false, 'data' => ['message' => '']];
-
-        try {
-            // Get POST data
-            $season = sanitize_text_field($_POST['season']);
-            $linkStructure = sanitize_text_field($_POST['link_structure']);
-            $venue = sanitize_text_field($_POST['venue']);
-            $region = sanitize_text_field($_POST['region']);
-            $ageGroup = sanitize_text_field($_POST['age_group']);
-            $age_group_name = sanitize_text_field($_POST['age_group_name'] ?? '');
-            $pool = sanitize_text_field($_POST['pool']);
-            $pool_name = sanitize_text_field($_POST['pool_name'] ?? '');
-            $session_id = sanitize_text_field($_POST['session_id'] ?? '');
-            $total_pools = (int) ($_POST['total_pools'] ?? 1);
-            $tournament_level = sanitize_text_field($_POST['tournament_level'] ?? '');
-            $color_id = sanitize_text_field($_POST['color_id'] ?? '');
-            $region_name = sanitize_text_field($_POST['region_name'] ?? '');
-            $season_name = sanitize_text_field($_POST['season_name'] ?? '');
-
-            if (empty($session_id)) {
-                throw new \Exception('Session ID is required.');
-            }
-
-            // Get or create log ID for the session
-            $transient_key = 'scraper_log_' . $session_id;
-            $log_data = get_transient($transient_key);
-
-            if ($log_data === false) {
-                $existing_log = $this->wpdb->get_row(
-                    $this->wpdb->prepare(
-                        "SELECT id, total_matches, error_message FROM {$this->wpdb->prefix}cal_sync_logs WHERE session_id = %s LIMIT 1",
-                        $session_id
-                    )
-                );
-
-                if ($existing_log) {
-                    $log_id = $existing_log->id;
-                    $messages = $existing_log->error_message ? unserialize($existing_log->error_message) : ["Resuming session $session_id for venue: $venue"];
-                    $log_data = [
-                        'log_id' => $log_id,
-                        'total_matches' => $existing_log->total_matches ? (int)$existing_log->total_matches : 0,
-                        'messages' => is_array($messages) ? $messages : [$messages],
-                        'request_count' => 0,
-                        'total_pools' => $total_pools,
-                        'matches' => [], // Store matches for batch processing
-                    ];
-                } else {
-                    $log_id = $this->logger->start_log($season, $region, $ageGroup, 'all_pools', $session_id);
-                    $log_data = [
-                        'log_id' => $log_id,
-                        'total_matches' => 0,
-                        'messages' => ["Starting session $session_id, searching venue: $venue"],
-                        'request_count' => 0,
-                        'total_pools' => $total_pools,
-                        'matches' => [],
-                    ];
-                }
-                set_transient($transient_key, $log_data, 3600);
-            } else {
-                $log_id = $log_data['log_id'];
-            }
-
-            $log_data['request_count']++;
-
-            // Generate URL
-            $url = str_replace(
-                ['{season}', '{region}', '{group}', '{pool}'],
-                [$season, $region, $ageGroup, $pool],
-                $linkStructure
-            );
-
-            // Check cache
-            $cache_key = 'scrape_' . md5($url . '_' . $venue);
-            $cached_matches = get_transient($cache_key);
-
-            if ($cached_matches !== false && is_array($cached_matches)) {
-                $matches = $cached_matches;
-                $log_data['messages'][] = "Season: $season_name, Region: $region_name, Age Group: $age_group_name -> Pool $tournament_level - $pool_name ($pool): Found " . count($matches) . " matches (from cache)";
-            } else {
-                $matches = $this->scrape_results($url, $venue);
-                if (is_array($matches) && !isset($matches['error'])) {
-                    set_transient($cache_key, $matches, 24 * 3600); // Cache for 24 hours
-                }
-            }
-
-            $total_matches = is_array($matches) && !isset($matches['error']) ? count($matches) : 0;
-
-            if (isset($matches['error'])) {
-                $log_data['messages'][] = "Error in pool $tournament_level - $pool_name ($pool): " . $matches['error'];
-                $response['data']['message'] = $matches['error'];
-            } else {
-                $log_data['total_matches'] += $total_matches;
-                $log_data['messages'][] = "Season: $season_name, Region: $region_name, Age Group: $age_group_name -> Pool $tournament_level - $pool_name ($pool): Found $total_matches matches";
-                $response['success'] = true;
-                $response['data']['message'] = $matches;
-                $log_data['matches'] = array_merge($log_data['matches'], $matches); // Collect matches for batch insert
-            }
-
-            // Batch update Google Calendar and log
-            if ($log_data['request_count'] % $this->batch_size === 0 || $log_data['request_count'] >= $log_data['total_pools']) {
-                if (!empty($log_data['matches'])) {
-                    $google_calendar_sync = new Google_Calendar_Sync();
-                    $google_calendar_sync->insertMatches(
-                        $log_data['matches'],
-                        $season_name,
-                        $region_name,
-                        $age_group_name,
-                        $pool_name,
-                        $tournament_level,
-                        $color_id,
-                        $season,
-                        $region,
-                        $ageGroup,
-                        $pool
-                    );
-                    $log_data['matches'] = []; // Clear after insert
-                }
-                $log_message = implode('\n', $log_data['messages']);
-                $this->logger->update_log($log_id, $log_data['total_matches'], $log_message, 'running');
-                set_transient($transient_key, $log_data, 3600);
-            }
-
-            // Complete log if all pools are processed
-            if ($log_data['request_count'] >= $log_data['total_pools']) {
-                if (!empty($log_data['matches'])) {
-                    $google_calendar_sync = new Google_Calendar_Sync();
-                    $google_calendar_sync->insertMatches(
-                        $log_data['matches'],
-                        $season_name,
-                        $region_name,
-                        $age_group_name,
-                        $pool_name,
-                        $tournament_level,
-                        $color_id,
-                        $season,
-                        $region,
-                        $ageGroup,
-                        $pool
-                    );
-                }
-                $log_message = implode('\n', $log_data['messages']);
-                $this->logger->update_log($log_id, $log_data['total_matches'], $log_message, 'completed');
-                delete_transient($transient_key);
-                $this->quit_driver();
-            } else {
-                set_transient($transient_key, $log_data, 3600);
-            }
-
-            wp_send_json($response);
-        } catch (\Exception $e) {
-            $response['data']['message'] = 'Error fetching data: ' . htmlspecialchars($e->getMessage());
-            $this->logger->log('error', htmlspecialchars($e->getMessage()));
-            if (isset($log_id)) {
-                $log_data['messages'][] = $response['data']['message'];
-                $log_message = implode('\n', $log_data['messages']);
-                $this->logger->update_log($log_id, $log_data['total_matches'], $log_message, 'failed');
-                set_transient($transient_key, $log_data, 3600);
-            }
-            $this->quit_driver();
-            wp_send_json($response);
-        }
-
-        wp_die();
     }
 
     private function scrape_results($driver, $url, $venue)
@@ -498,18 +309,12 @@ class Scraper
                     'message' => ($messages = @unserialize($log->error_message)) && is_array($messages)
                         ? end($messages)
                         : $log->error_message,
-                    'matches' => $log->status === 'completed' ? $this->get_matches_for_session($session_id) : [],
+                    'matches' => [],
                     'status' => $log->status
                 ]
             ]);
         } else {
             wp_send_json(['success' => false, 'data' => ['message' => 'No log found for session']]);
         }
-    }
-
-    private function get_matches_for_session($session_id)
-    {
-        // Placeholder: Adjust to fetch matches from your database or cache if stored
-        return [];
     }
 }

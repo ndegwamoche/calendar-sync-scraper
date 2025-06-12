@@ -5,10 +5,16 @@ namespace Calendar_Sync_Scraper;
 class Events_Calendar_Sync
 {
     private $time_offset;
+    private $colors_table;
+    private $wpdb;
 
     public function __construct()
     {
-        $this->time_offset = get_option('cal_sync_time_offset', '+1 hour');
+        global $wpdb;
+        $this->wpdb = $wpdb;
+
+        $this->time_offset = get_option('cal_sync_time_offset', '+3 hour');
+        $this->colors_table = $wpdb->prefix . 'cal_sync_colors';
     }
 
     public function insertMatches($matches, $season_name, $region_name, $age_group_name, $pool_name, $tournament_level, $color_id, $season, $region, $ageGroup, $pool)
@@ -26,33 +32,41 @@ class Events_Calendar_Sync
                     ->format('Y-m-d H:i:s');
 
                 $description = "<strong>{$region_name} {$season_name}</strong><br>" .
-                    "<a href='https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#3,{$season},{$pool},{$ageGroup},{$region},{$match['hjemmehold_id']},,4203'>$tournament_level $pool_name</a><br><br>" .
-                    "<a href='https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#2,{$season},{$pool},{$ageGroup},{$region},,,4203'>{$match['hjemmehold']}</a><br>" .
+                    "<a href='https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#3,{$season},{$pool},{$ageGroup},{$region},{$match['hjemmehold_id']},,4203' target='_blank'>$tournament_level $pool_name</a><br><br>" .
+                    "<a href='https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#2,{$season},{$pool},{$ageGroup},{$region},,,4203' target='_blank'>{$match['hjemmehold']}</a><br>" .
                     "{$match['udehold']}, Grøndal MultiCenter<br><br>" .
                     "<strong>Resultat: {$match['resultat']}<br>" .
                     "Point: {$match['point']}</strong><br><br>" .
-                    "<a href='https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#5,{$season},{$pool},{$ageGroup},{$region},,{$match['no']},4203'>Kampdetaljer</a>";
+                    "<a href='https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#5,{$season},{$pool},{$ageGroup},{$region},,{$match['no']},4203' target='_blank'>Kampdetaljer</a>";
 
-                $event_color = $this->map_color_id_to_hex($color_id);
+                $colors = $this->map_color_id_to_hex($color_id);
+                $event_color = $colors['background'];
+                $font_color = $colors['font'];
+
+                // Use Europe/Copenhagen timezone
+                $tz = new \DateTimeZone('Europe/Copenhagen');
+                $start = new \DateTime($startDateTime, $tz);
+                $end   = new \DateTime($endDateTime, $tz);
 
                 $event_data = [
-                    'post_type' => 'tribe_events',
-                    'post_title' => "$age_group_name $tournament_level $pool_name",
+                    'post_type'    => 'tribe_events',
+                    'post_title'   => "$age_group_name $tournament_level $pool_name",
                     'post_content' => $description,
-                    'post_status' => 'publish',
-                    'meta_input' => [
-                        '_EventStartDate'      => $startDateTime,         // Local time
-                        '_EventEndDate'        => $endDateTime,           // Local time
-                        '_EventStartDateUTC'   => gmdate('Y-m-d H:i:s', strtotime($startDateTime)), // UTC
-                        '_EventEndDateUTC'     => gmdate('Y-m-d H:i:s', strtotime($endDateTime)),   // UTC
+                    'post_status'  => 'publish',
+                    'meta_input'   => [
+                        '_EventStartDate'      => $start->format('Y-m-d H:i:s'),
+                        '_EventEndDate'        => $end->format('Y-m-d H:i:s'),
+                        '_EventStartDateUTC'   => $start->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'),
+                        '_EventEndDateUTC'     => $end->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'),
                         '_EventVenueID'        => 209,
                         '_EventOrganizerID'    => 206,
                         '_EventCost'           => 0,
                         '_tribe_event_color'   => $event_color,
+                        '_tribe_event_font_color' => $font_color,
                         '_EventOrigin'         => 'events-calendar',
                         '_EventShowMap'        => 'TRUE',
-                        '_EventTimezone'       => 'UTC',              // Or 'Africa/Nairobi'
-                        '_EventTimezoneAbbr'   => 'UTC',
+                        '_EventTimezone'       => 'Europe/Copenhagen',
+                        '_EventTimezoneAbbr'   => $start->format('T'), // CET or CEST
                     ]
                 ];
 
@@ -65,7 +79,6 @@ class Events_Calendar_Sync
                 }
 
                 error_log("Event inserted with ID: $event_id, Meta: " . print_r(get_post_meta($event_id), true));
-                $this->apply_event_color($event_id, $event_color);
             } catch (\Exception $e) {
                 error_log("Events Calendar Sync: Failed to insert match {$match['no']}: " . $e->getMessage());
             }
@@ -98,35 +111,17 @@ class Events_Calendar_Sync
 
     private function map_color_id_to_hex($color_id)
     {
-        $color_map = [
-            '1' => '#a4bdfc', // Lavender
-            '2' => '#7ae7bf', // Sage
-            '3' => '#dbadff', // Grape
-            '4' => '#ff887c', // Flamingo
-            '5' => '#fbd75b', // Banana
-            '6' => '#ffb878', // Tangerine
-            '7' => '#46d6db', // Peacock
-            '8' => '#e1e1e1', // Graphite
-            '9' => '#5484ed', // Blueberry
-            '10' => '#51b749', // Basil
-            '11' => '#dc2127', // Tomato
+        $row = $this->wpdb->get_row(
+            $this->wpdb->prepare(
+                "SELECT hex_code, font_hex_code FROM {$this->colors_table} WHERE id = %d LIMIT 1",
+                $color_id
+            ),
+            ARRAY_A
+        );
+
+        return [
+            'background' => $row['hex_code'] ?? '#039be5',
+            'font'       => $row['font_hex_code'] ?? '#FFFFFF', // default to black
         ];
-        return $color_map[$color_id] ?? '#666666'; // Default gray
-    }
-
-    private function apply_event_color($event_id, $event_color)
-    {
-        update_post_meta($event_id, '_tribe_event_color', $event_color);
-
-        add_action('wp_footer', function () use ($event_id, $event_color) {
-            echo "<style>
-                .tribe-events-calendar .tribe-event-id-$event_id,
-                .tribe-events-list .tribe-event-id-$event_id {
-                    background-color: $event_color !important;
-                    border-left: 4px solid $event_color !important;
-                    color: #ffffff !important;
-                }
-            </style>";
-        });
     }
 }
