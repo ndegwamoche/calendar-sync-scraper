@@ -218,7 +218,7 @@ const App = () => {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: new URLSearchParams({
-                        action: 'clear_google_calendar_events',
+                        action: 'delete_all_events_permanently',
                         _ajax_nonce: calendarScraperAjax.nonce,
                     }),
                 });

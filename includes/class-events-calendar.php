@@ -13,7 +13,7 @@ class Events_Calendar_Sync
         global $wpdb;
         $this->wpdb = $wpdb;
 
-        $this->time_offset = get_option('cal_sync_time_offset', '+3 hour');
+        $this->time_offset = get_option('cal_sync_time_offset', '+3 hours');
         $this->colors_table = $wpdb->prefix . 'cal_sync_colors';
     }
 
@@ -27,9 +27,14 @@ class Events_Calendar_Sync
         foreach ($matches as $match) {
             try {
                 $startDateTime = $this->parseTidToDateTime($match['tid']);
-                $endDateTime = (new \DateTime($startDateTime))
-                    ->modify($this->time_offset)
-                    ->format('Y-m-d H:i:s');
+                $endDateTimeObj = (new \DateTime($startDateTime))->modify($this->time_offset);
+
+                // If the day changed, cap it at 23:59:59 of the start day
+                if ($endDateTimeObj->format('Y-m-d') !== (new \DateTime($startDateTime))->format('Y-m-d')) {
+                    $endDateTime = (new \DateTime($startDateTime))->setTime(23, 59, 59)->format('Y-m-d H:i:s');
+                } else {
+                    $endDateTime = $endDateTimeObj->format('Y-m-d H:i:s');
+                }
 
                 $description = "<strong>{$region_name} {$season_name}</strong><br>" .
                     "<a href='https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#3,{$season},{$pool},{$ageGroup},{$region},{$match['hjemmehold_id']},,4203' target='_blank'>$tournament_level $pool_name</a><br><br>" .
@@ -70,23 +75,25 @@ class Events_Calendar_Sync
                     ]
                 ];
 
-                error_log("Event data: " . print_r($event_data, true));
                 $event_id = wp_insert_post($event_data, true);
 
                 if (is_wp_error($event_id)) {
                     error_log("Events Calendar Sync: Failed to insert match {$match['no']}: " . $event_id->get_error_message());
                     continue;
                 }
-
-                error_log("Event inserted with ID: $event_id, Meta: " . print_r(get_post_meta($event_id), true));
             } catch (\Exception $e) {
                 error_log("Events Calendar Sync: Failed to insert match {$match['no']}: " . $e->getMessage());
             }
         }
     }
 
-    private function parseTidToDateTime(string $tid): string
+    private function parseTidToDateTime(?string $tid): string
     {
+        if (empty($tid)) {
+            error_log("Empty or null datetime string provided.");
+            return '';
+        }
+
         $tid = preg_replace('/^(ma|ti|on|to|fr|lø|sø)\s+/i', '', trim($tid));
         $tid = str_replace(['‑', '–'], '-', $tid);
 
@@ -101,13 +108,13 @@ class Events_Calendar_Sync
                 throw new \Exception("Invalid datetime format: '$tid'");
             }
 
-            error_log("Parsed datetime: " . $dateTime->format('Y-m-d H:i:s'));
             return $dateTime->format('Y-m-d H:i:s');
         } catch (\Exception $e) {
             error_log("Failed to parse datetime '$tid': " . $e->getMessage());
-            throw $e;
+            return '';
         }
     }
+
 
     private function map_color_id_to_hex($color_id)
     {
@@ -123,5 +130,29 @@ class Events_Calendar_Sync
             'background' => $row['hex_code'] ?? '#039be5',
             'font'       => $row['font_hex_code'] ?? '#FFFFFF', // default to black
         ];
+    }
+
+    public function delete_all_events_permanently()
+    {
+        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce'); // optional, but recommended
+
+        try {
+            $event_ids = $this->wpdb->get_col(
+                "SELECT ID FROM {$this->wpdb->posts} WHERE post_type = 'tribe_events'"
+            );
+
+            $deleted_count = 0;
+
+            foreach ($event_ids as $event_id) {
+                if (wp_delete_post($event_id, true)) {
+                    $deleted_count++;
+                }
+            }
+
+            wp_send_json_success(['deleted' => $deleted_count]);
+        } catch (\Exception $e) {
+            error_log('Failed to delete tribe_events: ' . $e->getMessage());
+            wp_send_json_error(['message' => $e->getMessage()]);
+        }
     }
 }

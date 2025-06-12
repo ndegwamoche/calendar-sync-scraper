@@ -42,6 +42,7 @@ class Admin_UI
         add_action('wp_ajax_save_google_credentials', [$this->google_calendar, 'save_google_credentials']);
         add_action('wp_ajax_get_google_credentials', [$this->google_calendar, 'get_google_credentials']);
         add_action('wp_ajax_clear_google_calendar_events', [$this->google_calendar, 'clear_google_calendar_events']);
+        add_action('wp_ajax_delete_all_events_permanently', [$this->events_calendar, 'delete_all_events_permanently']);
 
         //pools scrapping
         add_action('wp_ajax_fetch_page_html', [$this->scraper, 'fetch_page_html']);

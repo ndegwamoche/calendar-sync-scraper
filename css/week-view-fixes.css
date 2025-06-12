@@ -7,8 +7,18 @@
     min-height: 700px;
     background: #ffffff;
     border-radius: 28px;
+    padding-bottom: 0px !important;
+    padding-top: 40px;
 }
 
 .tribe-common a {
     color: #007CBA !important;
+}
+
+.tribe-events-pro .tribe-events-pro-week-grid__event-title {
+    font-weight: 600 !important;
+}
+
+.tribe-common.tribe-common--breakpoint-medium button.tribe-events-c-top-bar__datepicker-button {
+    font-size: 18px !important;
 }

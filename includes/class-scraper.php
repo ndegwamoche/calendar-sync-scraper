@@ -76,7 +76,7 @@ class Scraper
             $lastHeight = $driver->executeScript('return document.body.scrollHeight;');
             for ($i = 0; $i < 2; $i++) {
                 $driver->executeScript('window.scrollTo(0, document.body.scrollHeight);');
-                usleep(200000);
+                usleep(500000);
                 $newHeight = $driver->executeScript('return document.body.scrollHeight;');
                 $rowCount = $driver->executeScript('return document.querySelectorAll("table.matchlist tr:not(.headerrow)").length;');
                 if ($rowCount > 0 || $newHeight === $lastHeight) break;
