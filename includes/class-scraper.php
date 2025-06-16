@@ -274,7 +274,6 @@ class Scraper
         }
     }
 
-
     public function get_scraper_progress()
     {
         $session_id = sanitize_text_field($_GET['session_id'] ?? '');
@@ -316,5 +315,197 @@ class Scraper
         } else {
             wp_send_json(['success' => false, 'data' => ['message' => 'No log found for session']]);
         }
+    }
+
+    public function fetch_page_html()
+    {
+        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
+
+        $season = sanitize_text_field($_POST['season']);
+        $ageGroup = sanitize_text_field($_POST['age_group']);
+        $region = sanitize_text_field($_POST['region']);
+        $url = sanitize_text_field($_POST['link_structure']);
+
+        $messages = [];
+
+        try {
+            $url = str_replace(
+                ['{season}', '{group}', '{region}'],
+                [$season, $ageGroup, $region],
+                "https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#1,{season},,{group},{region},,,,"
+            );
+            $messages[] = "Generated URL: $url";
+
+            $serverUrl = 'http://localhost:9515';
+            $capabilities = DesiredCapabilities::chrome();
+            $capabilities->setCapability('goog:chromeOptions', [
+                'args' => [
+                    '--headless',
+                    '--disable-gpu',
+                    '--no-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--user-data-dir=' . '/tmp/chrome-profile-' . uniqid(),
+                ]
+            ]);
+
+            $messages[] = "Initializing WebDriver...";
+            $driver = RemoteWebDriver::create($serverUrl, $capabilities);
+            $messages[] = "Navigating to URL...";
+            $driver->get($url);
+            $driver->manage()->timeouts()->implicitlyWait(10);
+
+            try {
+                $messages[] = "Fetching page source...";
+                $html = $driver->getPageSource();
+            } catch (UnexpectedAlertOpenException $e) {
+                $messages[] = "Unexpected alert encountered: " . $e->getMessage();
+                $alert = $driver->switchTo()->alert();
+                $alert->dismiss();
+                $html = $driver->getPageSource();
+            } finally {
+                $messages[] = "Closing WebDriver...";
+                $driver->quit();
+            }
+
+            wp_send_json([
+                'success' => true,
+                'html' => $html,
+                'messages' => $messages
+            ]);
+        } catch (Exception $e) {
+            $errorMessage = 'Error fetching page HTML: ' . htmlspecialchars($e->getMessage());
+            $messages[] = $errorMessage;
+            wp_send_json([
+                'success' => false,
+                'error' => $errorMessage,
+                'messages' => $messages
+            ]);
+        }
+    }
+
+    public function check_tournament_level()
+    {
+        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
+
+        $level_name = sanitize_text_field($_POST['level_name']);
+        $season_id = sanitize_text_field($_POST['season_id']);
+        $region_id = sanitize_text_field($_POST['region_id']);
+        $age_group_id = sanitize_text_field($_POST['age_group_id']);
+
+        $existingLevel = $this->wpdb->get_row(
+            $this->wpdb->prepare(
+                "SELECT id FROM {$this->wpdb->prefix}cal_sync_tournament_levels 
+            WHERE level_name = %s 
+            AND season_id = %s 
+            AND region_id = %s 
+            AND age_group_id = %s",
+                $level_name,
+                $season_id,
+                $region_id,
+                $age_group_id
+            )
+        );
+
+        wp_send_json([
+            'success' => true,
+            'exists' => !empty($existingLevel),
+            'level_id' => $existingLevel ? $existingLevel->id : null,
+            'error' => $this->wpdb->last_error
+        ]);
+    }
+
+    public function insert_tournament_level()
+    {
+        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
+
+        $level_name = sanitize_text_field($_POST['level_name']);
+        $season_id = sanitize_text_field($_POST['season_id']);
+        $region_id = sanitize_text_field($_POST['region_id']);
+        $age_group_id = sanitize_text_field($_POST['age_group_id']);
+        $google_color_id = '0';
+
+        $this->wpdb->insert(
+            "{$this->wpdb->prefix}cal_sync_tournament_levels",
+            [
+                'level_name' => $level_name,
+                'season_id' => $season_id,
+                'region_id' => $region_id,
+                'age_group_id' => $age_group_id,
+                'google_color_id' => $google_color_id
+            ],
+            ['%s', '%s', '%s', '%s', '%s']
+        );
+
+        wp_send_json([
+            'success' => $this->wpdb->insert_id !== false,
+            'level_id' => $this->wpdb->insert_id,
+            'error' => $this->wpdb->last_error
+        ]);
+    }
+
+    public function check_tournament_pool()
+    {
+        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
+
+        $tournament_level = sanitize_text_field($_POST['tournament_level']);
+        $pool_value = sanitize_text_field($_POST['pool_value']);
+        $season_id = sanitize_text_field($_POST['season_id']);
+        $region_id = sanitize_text_field($_POST['region_id']);
+        $age_group_id = sanitize_text_field($_POST['age_group_id']);
+
+        $existingPool = $this->wpdb->get_var(
+            $this->wpdb->prepare(
+                "SELECT COUNT(*) FROM {$this->wpdb->prefix}cal_sync_tournament_pools 
+            WHERE tournament_level = %s 
+            AND pool_value = %s 
+            AND season_id = %s 
+            AND region_id = %s 
+            AND age_group_id = %s",
+                $tournament_level,
+                $pool_value,
+                $season_id,
+                $region_id,
+                $age_group_id
+            )
+        );
+
+        wp_send_json([
+            'success' => true,
+            'exists' => $existingPool > 0,
+            'error' => $this->wpdb->last_error
+        ]);
+    }
+
+    public function insert_tournament_pool()
+    {
+        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
+
+        $tournament_level = sanitize_text_field($_POST['tournament_level']);
+        $pool_name = sanitize_text_field($_POST['pool_name']);
+        $pool_value = sanitize_text_field($_POST['pool_value']);
+        $is_playoff = intval($_POST['is_playoff']);
+        $season_id = sanitize_text_field($_POST['season_id']);
+        $region_id = sanitize_text_field($_POST['region_id']);
+        $age_group_id = sanitize_text_field($_POST['age_group_id']);
+
+        $this->wpdb->insert(
+            "{$this->wpdb->prefix}cal_sync_tournament_pools",
+            [
+                'tournament_level' => $tournament_level,
+                'pool_name' => $pool_name,
+                'pool_value' => $pool_value,
+                'is_playoff' => $is_playoff,
+                'season_id' => $season_id,
+                'region_id' => $region_id,
+                'age_group_id' => $age_group_id
+            ],
+            ['%s', '%s', '%s', '%d', '%s', '%s', '%s']
+        );
+
+        wp_send_json([
+            'success' => $this->wpdb->insert_id !== false,
+            'pool_id' => $this->wpdb->insert_id,
+            'error' => $this->wpdb->last_error
+        ]);
     }
 }

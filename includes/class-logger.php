@@ -50,42 +50,6 @@ class Logger
         );
     }
 
-    public function complete_log($log_id)
-    {
-        $this->wpdb->update(
-            $this->logs_table,
-            [
-                'close_datetime' => current_time('mysql'),
-                'status' => 'completed'
-            ],
-            ['id' => $log_id]
-        );
-    }
-
-    public function complete_scraper_log()
-    {
-        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
-
-        $session_id = sanitize_text_field($_POST['session_id']);
-
-        if (empty($session_id)) {
-            wp_send_json(['success' => false, 'data' => ['message' => 'Session ID is required.']]);
-            return;
-        }
-
-        $this->wpdb->update(
-            $this->logs_table,
-            [
-                'close_datetime' => current_time('mysql'),
-                'status' => 'completed'
-            ],
-            ['session_id' => $session_id]
-        );
-
-        wp_send_json(['success' => true, 'data' => ['message' => 'Log completed successfully.']]);
-        wp_die();
-    }
-
     public function log($status, $message = '')
     {
         $this->wpdb->insert(

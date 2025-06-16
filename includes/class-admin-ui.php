@@ -25,20 +25,22 @@ class Admin_UI
             echo '<link rel="stylesheet" href="' . esc_url(CAL_SYNC_SCRAPER_URL . 'css/week-view-fixes.css') . '?v=' . filemtime(CAL_SYNC_SCRAPER_PATH . 'css/week-view-fixes.css') . '" type="text/css" media="all">';
         }, 100);
 
-        add_action('wp_ajax_run_calendar_scraper', [$this->scraper, 'run_scraper']);
+        //scraper
         add_action('wp_ajax_run_all_calendar_scraper', [$this->scraper, 'run_all_calendar_scraper']);
         add_action('wp_ajax_get_scraper_progress', [$this->scraper, 'get_scraper_progress']);
+
+        //get data
         add_action('wp_ajax_get_tournament_options', [$this, 'get_tournament_options']);
         add_action('wp_ajax_get_log_info', [$this->logger, 'get_log_info']);
-        add_action('wp_ajax_get_log_info', [$this->logger, 'complete_log']);
-        add_action('wp_ajax_complete_scraper_log', [$this->logger, 'complete_scraper_log']);
         add_action('wp_ajax_get_tournament_levels_by_region_age', [$this->data_loader, 'get_tournament_levels_by_region_age']);
         add_action('wp_ajax_get_all_tournament_levels', [$this->data_loader, 'get_all_tournament_levels']);
+
         add_action('wp_ajax_save_level_color', [$this->data_loader, 'save_level_color']);
         add_action('wp_ajax_get_level_colors', [$this->data_loader, 'get_level_colors']);
         add_action('wp_ajax_remove_level_color', [$this->data_loader, 'remove_level_color']);
         add_action('wp_ajax_clear_level_colors', [$this->data_loader, 'clear_level_colors']);
         add_action('wp_ajax_get_google_colors', [$this->data_loader, 'get_google_colors']);
+
         add_action('wp_ajax_save_google_credentials', [$this->google_calendar, 'save_google_credentials']);
         add_action('wp_ajax_get_google_credentials', [$this->google_calendar, 'get_google_credentials']);
         add_action('wp_ajax_clear_google_calendar_events', [$this->google_calendar, 'clear_google_calendar_events']);

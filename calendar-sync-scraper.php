@@ -32,3 +32,11 @@ register_activation_hook(__FILE__, array($db_init, 'insert_initial_data'));
 add_action('plugins_loaded', function () {
     new Calendar_Sync_Scraper\Admin_UI();
 });
+
+// Redirect to events/ if viewing an event
+add_action('template_redirect', function () {
+    if (is_singular('tribe_events')) {
+        wp_redirect(home_url('/events/'), 301);
+        exit;
+    }
+});

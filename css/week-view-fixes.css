@@ -28,7 +28,6 @@
     display: flex !important;
     flex-wrap: nowrap !important;
     gap: 0px !important;
-    /* Reduced gap to 0px, adjust as needed */
     width: 100% !important;
     position: relative !important;
 }
