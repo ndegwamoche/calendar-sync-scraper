@@ -1,0 +1,78 @@
+.team-viewer {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.team-table {
+  width: 100%;
+  max-width: 1200px;
+  border-collapse: collapse;
+  font-size: 14px;
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  table-layout: fixed;
+}
+
+.team-table th,
+.team-table td {
+  padding: 10px;
+  border: 1px solid #ddd;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-table th:nth-child(1),
+.team-table td:nth-child(1) {
+  width: 80px; /* ID */
+}
+.team-table th:nth-child(2),
+.team-table td:nth-child(2) {
+  width: 200px; /* Team Name */
+}
+.team-table th:nth-child(3),
+.team-table td:nth-child(3) {
+  width: 120px; /* Image */
+}
+.team-table th:nth-child(4),
+.team-table td:nth-child(4) {
+  width: 180px; /* Upload Image */
+}
+
+.team-table th {
+  background-color: #f4f4f4;
+  font-weight: bold;
+}
+
+.team-table img {
+  max-width: 100px;
+  height: auto;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+input[type="file"] {
+  font-size: 14px;
+  padding: 6px;
+}
+
+.search-container {
+  margin: 10px;
+}
+
+.search-container input {
+  padding: 8px;
+  width: 300px;
+  font-size: 16px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  outline: none;
+}
+
+.search-container input:focus {
+  border-color: #0073aa;
+  box-shadow: 0 0 5px rgba(0, 115, 170, 0.3);
+}

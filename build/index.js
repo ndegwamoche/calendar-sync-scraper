@@ -4695,9 +4695,11 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _Logs__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./Logs */ "./src/Logs.js");
 /* harmony import */ var _Colors__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./Colors */ "./src/Colors.js");
 /* harmony import */ var _Settings__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./Settings */ "./src/Settings.js");
-/* harmony import */ var _App_scss__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./App.scss */ "./src/App.scss");
-/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! react/jsx-runtime */ "react/jsx-runtime");
-/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6___default = /*#__PURE__*/__webpack_require__.n(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__);
+/* harmony import */ var _Teams__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./Teams */ "./src/Teams.js");
+/* harmony import */ var _App_scss__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./App.scss */ "./src/App.scss");
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! react/jsx-runtime */ "react/jsx-runtime");
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7___default = /*#__PURE__*/__webpack_require__.n(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__);
+
 
 
 
@@ -4950,14 +4952,14 @@ const App = () => {
       }
     }
   };
-  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("div", {
+  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)("div", {
     className: "wrap",
-    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("h1", {
+    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("h1", {
       children: "Calendar Sync Scraper"
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("div", {
-      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("h2", {
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)("div", {
+      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)("h2", {
         className: "nav-tab-wrapper",
-        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("a", {
+        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("a", {
           href: "#main",
           className: `nav-tab ${activeTab === 'main' ? 'nav-tab-active' : ''}`,
           onClick: e => {
@@ -4965,7 +4967,7 @@ const App = () => {
             setActiveTab('main');
           },
           children: "Main"
-        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("a", {
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("a", {
           href: "#sheet-colors",
           className: `nav-tab ${activeTab === 'sheet-colors' ? 'nav-tab-active' : ''}`,
           onClick: e => {
@@ -4973,7 +4975,7 @@ const App = () => {
             setActiveTab('sheet-colors');
           },
           children: "Sheet Colors"
-        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("a", {
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("a", {
           href: "#log-state",
           className: `nav-tab ${activeTab === 'log-state' ? 'nav-tab-active' : ''}`,
           onClick: e => {
@@ -4981,7 +4983,7 @@ const App = () => {
             setActiveTab('log-state');
           },
           children: "Log State"
-        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("a", {
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("a", {
           href: "#settings",
           className: `nav-tab ${activeTab === 'settings' ? 'nav-tab-active' : ''}`,
           onClick: e => {
@@ -4989,50 +4991,58 @@ const App = () => {
             setActiveTab('settings');
           },
           children: "Settings"
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("a", {
+          href: "#teams",
+          className: `nav-tab ${activeTab === 'teams' ? 'nav-tab-active' : ''}`,
+          onClick: e => {
+            e.preventDefault();
+            setActiveTab('teams');
+          },
+          children: "Teams"
         })]
-      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("div", {
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)("div", {
         id: "tab-content",
-        children: [activeTab === 'main' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("div", {
+        children: [activeTab === 'main' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("div", {
           id: "main",
           className: "tab-section active",
-          children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("form", {
+          children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)("form", {
             id: "calendar-scraper-form",
             onSubmit: e => e.preventDefault(),
-            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("div", {
+            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)("div", {
               className: "form-section",
-              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("div", {
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)("div", {
                 className: "form-control-group",
-                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("label", {
+                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("label", {
                   htmlFor: "season-select",
                   className: "form-label",
                   children: "Season:"
-                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("select", {
+                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)("select", {
                   id: "season-select",
                   name: "season",
                   className: `form-select ${errors.season ? 'has-error' : ''}`,
                   value: formData.season,
                   onChange: handleInputChange,
-                  children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("option", {
+                  children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("option", {
                     value: "",
                     children: "-- Select Season --"
-                  }), seasons.map(season => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("option", {
+                  }), seasons.map(season => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("option", {
                     value: season.season_value,
                     children: season.season_name
                   }, season.season_value))]
                 })]
-              }), errors.season && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("span", {
+              }), errors.season && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("span", {
                 className: "error-message",
                 children: errors.season
               })]
-            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("div", {
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)("div", {
               className: "form-section",
-              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("div", {
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)("div", {
                 className: "form-control-group",
-                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("label", {
+                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("label", {
                   htmlFor: "link-structure",
                   className: "form-label",
                   children: "Link Structure:"
-                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("input", {
+                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("input", {
                   type: "text",
                   id: "link-structure",
                   name: "linkStructure",
@@ -5041,19 +5051,19 @@ const App = () => {
                   onChange: handleInputChange,
                   placeholder: "Enter link structure name"
                 })]
-              }), errors.linkStructure && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("span", {
+              }), errors.linkStructure && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("span", {
                 className: "error-message",
                 children: errors.linkStructure
               })]
-            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("div", {
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)("div", {
               className: "form-section",
-              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("div", {
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)("div", {
                 className: "form-control-group",
-                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("label", {
+                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("label", {
                   htmlFor: "venue",
                   className: "form-label",
                   children: "Venue:"
-                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("input", {
+                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("input", {
                   type: "text",
                   id: "venue",
                   name: "venue",
@@ -5062,25 +5072,25 @@ const App = () => {
                   onChange: handleInputChange,
                   placeholder: "Enter venue name"
                 })]
-              }), errors.venue && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("span", {
+              }), errors.venue && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("span", {
                 className: "error-message",
                 children: errors.venue
               })]
-            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("div", {
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)("div", {
               className: "form-section button-group",
               style: {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'
               },
-              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("button", {
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("button", {
                 type: "button",
                 id: "run-scraper-now",
                 className: "button button-primary",
                 onClick: handleRunAllScrapers,
                 disabled: isRunning || isClearing,
                 children: isRunning ? 'Running...' : 'Run Scraper Now'
-              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("button", {
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("button", {
                 type: "button",
                 id: "clear-matches",
                 className: "button button-secondary",
@@ -5088,55 +5098,55 @@ const App = () => {
                 disabled: isRunning || isClearing,
                 children: "Clear All Matches"
               })]
-            }), (isRunning || isClearing) && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("div", {
+            }), (isRunning || isClearing) && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)("div", {
               id: "scraper-progress",
-              children: [isRunning && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.Fragment, {
-                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("progress", {
+              children: [isRunning && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.Fragment, {
+                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("progress", {
                   value: progress,
                   max: "100"
-                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("span", {
+                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)("span", {
                   children: [progress, "%"]
                 })]
-              }), isClearing && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("div", {
+              }), isClearing && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("div", {
                 className: "loader",
                 children: "Clearing..."
               })]
-            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("div", {
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)("div", {
               id: "scraper-log",
               className: "scraper-log",
-              children: [log.message && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("pre", {
+              children: [log.message && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("pre", {
                 dangerouslySetInnerHTML: {
                   __html: log.message.replace(/\\n/g, '\n')
                 }
-              }), log.matches.length > 0 ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("ul", {
-                children: log.matches.map((match, index) => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("li", {
-                  children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsxs)("strong", {
+              }), log.matches.length > 0 ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("ul", {
+                children: log.matches.map((match, index) => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)("li", {
+                  children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsxs)("strong", {
                     children: ["Match ", match.no]
-                  }), " \u2013 ", /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("em", {
+                  }), " \u2013 ", /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("em", {
                     children: match.tid
-                  }), ": ", /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("strong", {
+                  }), ": ", /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("strong", {
                     children: match.hjemmehold
-                  }), " (", match.hjemmehold_id, ") vs ", /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("strong", {
+                  }), " (", match.hjemmehold_id, ") vs ", /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("strong", {
                     children: match.udehold
-                  }), " (", match.udehold_id, ") at ", /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("strong", {
+                  }), " (", match.udehold_id, ") at ", /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("strong", {
                     children: match.spillested
-                  }), " \u2014 Result: ", /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("strong", {
+                  }), " \u2014 Result: ", /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("strong", {
                     children: match.resultat
                   })]
                 }, index))
-              }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)("p", {
+              }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)("p", {
                 children: "No matches to display yet."
               })]
             })]
           })
-        }), activeTab === 'sheet-colors' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)(_Colors__WEBPACK_IMPORTED_MODULE_3__["default"], {
+        }), activeTab === 'sheet-colors' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)(_Colors__WEBPACK_IMPORTED_MODULE_3__["default"], {
           season: formData.season,
           url: formData.linkStructure,
           regions: regions,
           ageGroups: ageGroups
-        }), activeTab === 'log-state' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)(_Logs__WEBPACK_IMPORTED_MODULE_2__["default"], {
+        }), activeTab === 'log-state' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)(_Logs__WEBPACK_IMPORTED_MODULE_2__["default"], {
           logInfo: logInfo
-        }), activeTab === 'settings' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_6__.jsx)(_Settings__WEBPACK_IMPORTED_MODULE_4__["default"], {})]
+        }), activeTab === 'settings' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)(_Settings__WEBPACK_IMPORTED_MODULE_4__["default"], {}), activeTab === 'teams' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_7__.jsx)(_Teams__WEBPACK_IMPORTED_MODULE_5__["default"], {})]
       })]
     })]
   });
@@ -5189,6 +5199,7 @@ const Colors = ({
   const [googleColors, setGoogleColors] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
   const [levelColors, setLevelColors] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({});
   const [selectedLevel, setSelectedLevel] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('');
+  const [selectedColor, setSelectedColor] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('#000000');
   const [availableLevels, setAvailableLevels] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
   const [allLevels, setAllLevels] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
   const [loading, setLoading] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(true);
@@ -5334,7 +5345,7 @@ const Colors = ({
     };
     fetchLevels();
   }, [selectedRegion, selectedAgeGroup, season]);
-  const handleAssignColor = async (levelID, googleColorId) => {
+  const handleAssignColor = async (levelID, googleColorId, hexColor) => {
     try {
       const response = await fetch(calendarScraperAjax.ajax_url, {
         method: 'POST',
@@ -5345,16 +5356,20 @@ const Colors = ({
           action: 'save_level_color',
           _ajax_nonce: calendarScraperAjax.nonce,
           level_id: levelID,
-          google_color_id: googleColorId
+          google_color_id: googleColorId,
+          hex_color: hexColor
         })
       });
       const data = await response.json();
       if (data.success) {
         setLevelColors(prev => ({
           ...prev,
-          [levelID]: googleColorId
+          [levelID]: {
+            google_color_id: googleColorId,
+            hex_color: hexColor
+          }
         }));
-        setSelectedLevel(''); // Reset dropdown to default
+        setSelectedLevel('');
       } else {
         console.error('Failed to save level color:', data.data?.message || 'Unknown error');
       }
@@ -5429,7 +5444,6 @@ const Colors = ({
         const data = await response.json();
         if (data.success) {
           setLevelColors({});
-          // No need to update availableLevels here since the filter will handle it
         } else {
           console.error('Failed to clear level colors:', data.data?.message || 'Unknown error');
         }
@@ -5723,21 +5737,28 @@ const Colors = ({
     }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsxs)("div", {
       className: "form-section",
       children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("h4", {
-        children: "Available Colors:"
-      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("div", {
-        className: "color-swatches",
-        children: googleColors.map(colorObj => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("div", {
-          className: `color-swatch ${selectedLevel ? 'clickable' : 'disabled'}`,
-          style: {
-            backgroundColor: colorObj.hex_code
-          },
-          title: colorObj.color_name,
+        children: "Select Color:"
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsxs)("div", {
+        className: "color-picker",
+        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("input", {
+          type: "color",
+          value: selectedColor,
+          onChange: e => setSelectedColor(e.target.value),
+          disabled: !selectedLevel
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsxs)("button", {
+          className: "button button-primary sexy-assign-button",
           onClick: () => {
-            if (selectedLevel) {
-              handleAssignColor(selectedLevel, colorObj.google_color_id);
+            if (selectedLevel && selectedColor) {
+              handleAssignColor(selectedLevel, 0, selectedColor);
             }
-          }
-        }, colorObj.google_color_id))
+          },
+          disabled: !selectedLevel,
+          title: "Assign selected color to tournament level",
+          "aria-label": "Assign color",
+          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("span", {
+            className: "dashicons dashicons-art"
+          }), " Assign Color"]
+        })]
       })]
     }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsxs)("div", {
       className: "form-section",
@@ -5750,9 +5771,9 @@ const Colors = ({
         children: "No colors assigned."
       }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("ul", {
         className: "assigned-colors",
-        children: Object.entries(levelColors).map(([levelID, googleColorId]) => {
+        children: Object.entries(levelColors).map(([levelID, colorData]) => {
           const level = allLevels.find(l => l.id === levelID);
-          const hexCode = getHexCode(googleColorId);
+          const hexCode = colorData.hex_color;
           return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsxs)("li", {
             children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_3__.jsx)("span", {
               className: "level-name",
@@ -6258,6 +6279,239 @@ const Settings = () => {
   });
 };
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (Settings);
+
+/***/ }),
+
+/***/ "./src/Teams.js":
+/*!**********************!*\
+  !*** ./src/Teams.js ***!
+  \**********************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "react");
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _Teams_scss__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./Teams.scss */ "./src/Teams.scss");
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! react/jsx-runtime */ "react/jsx-runtime");
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__);
+
+
+
+const Teams = () => {
+  const [teams, setTeams] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
+  const [loading, setLoading] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(true);
+  const [searchTerm, setSearchTerm] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(''); // New state for search term
+
+  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
+    const fetchTeams = async () => {
+      try {
+        const response = await fetch(`${calendarScraperAjax.ajax_url}?action=get_teams`);
+        const result = await response.json();
+        if (result.success) {
+          setTeams(result.data);
+        } else {
+          console.error('Fetch teams failed:', result.data?.message);
+        }
+      } catch (error) {
+        console.error('Error fetching teams:', error);
+      }
+      setLoading(false);
+    };
+    fetchTeams();
+  }, []);
+  const openMediaLibrary = (teamId, teamName) => {
+    if (!window.wp?.media) {
+      console.error('WordPress media library is not available.');
+      return;
+    }
+    const mediaFrame = wp.media({
+      title: 'Select or Upload an Image',
+      button: {
+        text: 'Use this image'
+      },
+      multiple: false,
+      library: {
+        type: 'image'
+      }
+    });
+    mediaFrame.on('select', () => {
+      const attachment = mediaFrame.state().get('selection').first().toJSON();
+      if (attachment?.id && attachment?.url) {
+        uploadImageFromMediaLibrary(teamId, teamName, attachment);
+      } else {
+        console.error('Invalid attachment:', attachment);
+      }
+    });
+    mediaFrame.open();
+  };
+  const uploadImageFromMediaLibrary = async (teamId, teamName, media) => {
+    setLoading(true);
+    const formData = new FormData();
+    formData.append('action', 'upload_team_image_from_library');
+    formData.append('_ajax_nonce', calendarScraperAjax.nonce);
+    formData.append('team_id', teamId);
+    formData.append('team_name', teamName);
+    formData.append('media_id', media.id);
+    try {
+      const response = await fetch(calendarScraperAjax.ajax_url, {
+        method: 'POST',
+        body: formData
+      });
+      const result = await response.json();
+      if (result.success) {
+        setTeams(teams.map(team => team.id === teamId ? {
+          ...team,
+          image_url: result.data.image_url
+        } : team));
+      } else {
+        console.error('Upload failed:', result.data?.message);
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleSubmit = async e => {
+    e.preventDefault();
+    if (!validateForm()) {
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch(calendarScraperAjax.ajax_url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          action: 'run_all_teams_scraper',
+          _ajax_nonce: calendarScraperAjax.nonce,
+          season: 42024,
+          link_structure: "https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#2,{season},{pool},{group},{region},,,,"
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setMessage({
+          text: 'Settings saved successfully!',
+          type: 'success'
+        });
+      } else {
+        setMessage({
+          text: `Failed to save settings: ${data.data?.message || 'Unknown error'}`,
+          type: 'error'
+        });
+      }
+    } catch (error) {
+      setMessage({
+        text: `Error saving settings: ${error.message}`,
+        type: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Filter teams based on search term
+  const filteredTeams = teams.filter(team => team.team_name.toLowerCase().includes(searchTerm.toLowerCase()));
+  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
+    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
+      className: "search-container",
+      style: {
+        margin: '10px'
+      },
+      children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("input", {
+        type: "text",
+        placeholder: "Search teams by name...",
+        value: searchTerm,
+        onChange: e => setSearchTerm(e.target.value),
+        style: {
+          padding: '0px 8px',
+          width: '100%',
+          fontSize: '14px',
+          borderRadius: '4px',
+          border: '1px solid #ccc'
+        }
+      })
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
+      className: "team-viewer",
+      children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("table", {
+        className: "team-table",
+        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("thead", {
+          children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("tr", {
+            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("th", {
+              children: "ID"
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("th", {
+              children: "Team Name"
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("th", {
+              children: "Image"
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("th", {
+              children: "Choose Image"
+            })]
+          })
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("tbody", {
+          children: loading ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("tr", {
+            children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
+              colSpan: "6",
+              children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
+                className: "loader",
+                children: "Loading..."
+              })
+            })
+          }) : filteredTeams.length > 0 ? filteredTeams.map(team => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("tr", {
+            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
+              children: team.team_value
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
+              children: team.team_name
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
+              children: team.image_url ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("img", {
+                src: team.image_url,
+                alt: team.team_name,
+                style: {
+                  width: '100px',
+                  height: '70px',
+                  borderRadius: '4px'
+                }
+              }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("em", {
+                children: "No Image"
+              })
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
+              children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("button", {
+                type: "button",
+                onClick: () => openMediaLibrary(team.id, team.team_name),
+                children: "Choose Image"
+              })
+            })]
+          }, team.id)) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("tr", {
+            children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
+              colSpan: "6",
+              children: "No teams found matching your search."
+            })
+          })
+        })]
+      })
+    })]
+  });
+};
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (Teams);
+
+/***/ }),
+
+/***/ "./src/Teams.scss":
+/*!************************!*\
+  !*** ./src/Teams.scss ***!
+  \************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+// extracted by mini-css-extract-plugin
+
 
 /***/ }),
 

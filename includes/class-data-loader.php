@@ -11,6 +11,7 @@ class Data_Loader
     private $tournament_levels_table;
     private $tournament_pools_table;
     private $colors_table;
+    private $teams_table;
 
     public function __construct()
     {
@@ -23,6 +24,7 @@ class Data_Loader
         $this->tournament_levels_table = $wpdb->prefix . 'cal_sync_tournament_levels';
         $this->tournament_pools_table = $wpdb->prefix . 'cal_sync_tournament_pools';
         $this->colors_table = $wpdb->prefix . 'cal_sync_colors';
+        $this->teams_table = $wpdb->prefix . 'cal_sync_teams';
     }
 
     public function get_seasons()
@@ -47,6 +49,31 @@ class Data_Loader
             "SELECT age_group_name, age_group_value FROM {$this->age_groups_table}",
             ARRAY_A
         ) ?: [];
+    }
+
+    public function get_teams()
+    {
+        $results = $this->wpdb->get_results(
+            "SELECT id, team_name, team_value, image_id, image_url FROM {$this->teams_table}",
+            OBJECT
+        );
+
+        if (empty($results)) {
+            wp_send_json_success([]);
+            return [];
+        }
+
+        foreach ($results as $team) {
+            if (!empty($team->image_id)) {
+                $thumb = wp_get_attachment_image_src($team->image_id, 'thumbnail');
+                if ($thumb && !is_wp_error($thumb)) {
+                    $team->image_url = $thumb[0];
+                }
+            }
+        }
+
+        wp_send_json_success($results);
+        return $results;
     }
 
     public function get_tournament_levels()
@@ -177,7 +204,6 @@ class Data_Loader
 
     public function get_all_tournament_pools($season_id)
     {
-
         return $this->wpdb->get_results(
             $this->wpdb->prepare(
                 "SELECT
@@ -189,6 +215,7 @@ class Data_Loader
                     r.region_name,
                     a.age_group_name,
                     tl.google_color_id,
+                    tl.hex_color,
                     tp.region_id,
 	                tp.age_group_id,
                     r.region_order
@@ -225,20 +252,22 @@ class Data_Loader
     {
         $level_id = sanitize_text_field($_POST['level_id']);
         $google_color_id = sanitize_text_field($_POST['google_color_id']);
+        $hex_color = sanitize_text_field($_POST['hex_color']);
 
         if (!isset($level_id) || !isset($google_color_id)) {
             wp_send_json_error(['message' => 'Invalid request']);
             return;
         }
 
-        // Validate google_color_id exists in colors table
-        $existing_color = $this->wpdb->get_var(
-            $this->wpdb->prepare("SELECT COUNT(*) FROM $this->colors_table WHERE google_color_id = %s", $google_color_id)
-        );
+        if (intval($google_color_id) > 0) {
+            $existing_color = $this->wpdb->get_var(
+                $this->wpdb->prepare("SELECT COUNT(*) FROM $this->colors_table WHERE google_color_id = %s", $google_color_id)
+            );
 
-        if (!$existing_color) {
-            wp_send_json_error(['message' => 'Invalid Google color ID']);
-            return;
+            if (!$existing_color) {
+                wp_send_json_error(['message' => 'Invalid Google color ID']);
+                return;
+            }
         }
 
         $existing_level = $this->wpdb->get_var(
@@ -248,7 +277,8 @@ class Data_Loader
         if ($existing_level > 0) {
             $result = $this->wpdb->update(
                 $this->tournament_levels_table,
-                ['google_color_id' => $google_color_id],
+                //['google_color_id' => $google_color_id],
+                ['hex_color' => $hex_color],
                 ['id' => $level_id],
                 ['%s'],
                 ['%d']
@@ -265,13 +295,16 @@ class Data_Loader
     public function get_level_colors()
     {
         $results = $this->wpdb->get_results(
-            "SELECT id, google_color_id FROM {$this->tournament_levels_table} WHERE google_color_id IS NOT NULL AND google_color_id != ''",
+            "SELECT id, google_color_id, hex_color FROM {$this->tournament_levels_table} WHERE hex_color IS NOT NULL",
             ARRAY_A
         );
 
         $colors = [];
         foreach ($results as $row) {
-            $colors[$row['id']] = $row['google_color_id'];
+            $colors[$row['id']] = [
+                'google_color_id' => $row['google_color_id'],
+                'hex_color' => $row['hex_color'],
+            ];
         }
 
         wp_send_json_success($colors);
@@ -334,5 +367,113 @@ class Data_Loader
         } else {
             wp_send_json_error(['message' => 'Failed to clear colors']);
         }
+    }
+
+    public function upload_team_image_from_library()
+    {
+        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
+
+        $team_id = isset($_POST['team_id']) ? intval($_POST['team_id']) : 0;
+        $team_name = isset($_POST['team_name']) ? sanitize_text_field($_POST['team_name']) : '';
+        $media_id = isset($_POST['media_id']) ? intval($_POST['media_id']) : 0;
+
+        if (!$team_id || !$media_id) {
+            wp_send_json_error(['message' => 'Invalid team or media ID']);
+        }
+
+        $image_url = wp_get_attachment_url($media_id);
+        if (!$image_url) {
+            wp_send_json_error(['message' => 'Invalid media ID']);
+        }
+
+        // Update team data
+        $updated = $this->wpdb->update(
+            $this->teams_table,
+            [
+                'image_url' => $image_url,
+                'image_id'  => $media_id,
+            ],
+            ['id' => $team_id],
+            ['%s', '%d'],
+            ['%d']
+        );
+
+        if ($updated === false) {
+            wp_send_json_error(['message' => 'Failed to update team image: ' . $this->wpdb->last_error]);
+        }
+
+        // Find and update events with this team
+        $events = $this->wpdb->get_results($this->wpdb->prepare(
+            "SELECT ID FROM {$this->wpdb->posts} WHERE post_type = 'tribe_events' AND post_status = 'publish' AND post_content LIKE %s",
+            '%' . $this->wpdb->esc_like("<a href='https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#2,") . '%' . $this->wpdb->esc_like($team_name) . '</a>%'
+        ));
+
+        if ($events) {
+            foreach ($events as $event) {
+
+                if ($media_id && !is_wp_error($media_id)) {
+                    set_post_thumbnail($event->ID, $media_id);
+                } else {
+                    error_log("Team Image Updater: Failed to set featured image for event {$event->ID}");
+                }
+            }
+        }
+
+        wp_send_json_success(['image_url' => $image_url]);
+    }
+
+    public function insert_teams($teams, $season, $region, $ageGroup, $poolValue)
+    {
+        if (empty($teams) || !is_array($teams)) {
+            error_log("Insert_teams: No teams provided or invalid data");
+            return false;
+        }
+
+        $inserted = 0;
+        foreach ($teams as $team) {
+            if (!isset($team['team_id']) || !isset($team['team_name'])) {
+                error_log("Insert_teams: Skipping invalid team data: " . print_r($team, true));
+                continue;
+            }
+
+            $team_id = intval($team['team_id']);
+            $team_name = sanitize_text_field($team['team_name']);
+            $season_id = intval($season);
+            $region_id = intval($region);
+            $age_group_id = intval($ageGroup);
+            $pool_id = intval($poolValue);
+
+            // Check for existing team by team_name to prevent duplicates
+            $exists = $this->wpdb->get_var($this->wpdb->prepare(
+                "SELECT COUNT(*) FROM {$this->teams_table} WHERE team_name = %s",
+                $team_name
+            ));
+
+            if ($exists > 0) {
+                error_log("Insert_teams: Skipping duplicate team name '{$team_name}' (team_value: {$team_id}, season: {$season_id}, region: {$region_id}, age group: {$age_group_id}, pool: {$pool_id})");
+                continue;
+            }
+
+            // Insert or update team
+            $result = $this->wpdb->replace(
+                $this->teams_table,
+                [
+                    'team_name'    => $team_name,
+                    'team_value'   => $team_id,
+                    'image_id'     => 0,
+                    'image_url'    => '',
+                ],
+                ['%s', '%d', '%d', '%s']
+            );
+
+            if ($result === false) {
+                error_log("Insert_teams: Failed to insert/update team {$team_id}: " . $this->wpdb->last_error);
+            } else {
+                $inserted++;
+            }
+        }
+
+        error_log("Insert_teams: Inserted/updated $inserted teams");
+        return $inserted > 0;
     }
 }

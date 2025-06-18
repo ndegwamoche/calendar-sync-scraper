@@ -12,6 +12,7 @@ class DB_Init
     public $tournament_pools_table;
     public $logs_table;
     public $colors_table;
+    public $teams_table;
 
     public function __construct()
     {
@@ -25,6 +26,7 @@ class DB_Init
         $this->tournament_pools_table = $wpdb->prefix . 'cal_sync_tournament_pools';
         $this->logs_table = $wpdb->prefix . 'cal_sync_logs';
         $this->colors_table = $wpdb->prefix . 'cal_sync_colors';
+        $this->teams_table = $wpdb->prefix . 'cal_sync_teams';
     }
 
     public function create_tables()
@@ -32,6 +34,21 @@ class DB_Init
         global $wpdb;
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         $charset_collate = $wpdb->get_charset_collate();
+
+        //Teams table
+        $sql = "CREATE TABLE IF NOT EXISTS {$this->teams_table} (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            team_name VARCHAR(100) NOT NULL,
+            team_value INT(11) NOT NULL,
+            image_id BIGINT(20) UNSIGNED DEFAULT NULL,
+            image_url MEDIUMTEXT DEFAULT NULL,
+            season_id INT(11) NOT NULL,
+            region_id INT(11) NOT NULL,
+            age_group_id INT(11) NOT NULL,
+            pool_id INT(11) NOT NULL,
+            PRIMARY KEY (id)
+        ) $charset_collate;";
+        dbDelta($sql);
 
         // Seasons table
         $sql = "CREATE TABLE IF NOT EXISTS {$this->seasons_table} (
@@ -72,6 +89,7 @@ class DB_Init
             region_id BIGINT(20) UNSIGNED NOT NULL,
             age_group_id BIGINT(20) UNSIGNED NOT NULL,
             google_color_id INT DEFAULT NULL,
+            hex_color VARCHAR(10) DEFAULT NULL,
             PRIMARY KEY (id),
             UNIQUE KEY unique_level (level_name, season_id, region_id, age_group_id)
         ) $charset_collate;";

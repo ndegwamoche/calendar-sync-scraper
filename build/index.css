@@ -273,6 +273,251 @@
     transform: rotate(360deg);
   }
 }
+.color-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.color-picker input[type=color] {
+  width: 50px;
+  height: 30px;
+  padding: 2px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.color-picker input[type=color]:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Base styles for the button */
+.sexy-assign-button {
+  /* Reset or override default button-primary styles */
+  background: linear-gradient(135deg, #0073aa, #00a0d2); /* Gradient from dark to light blue */
+  color: #fff; /* White text */
+  border: none; /* Remove default border */
+  border-radius: 8px; /* Rounded corners */
+  padding: 10px 20px; /* Comfortable padding */
+  font-size: 16px; /* Slightly larger text */
+  font-weight: 600; /* Bold text */
+  text-transform: uppercase; /* Uppercase for emphasis */
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
+  cursor: pointer; /* Pointer cursor */
+  transition: all 0.3s ease; /* Smooth transitions for hover/active */
+  position: relative; /* For potential pseudo-elements or effects */
+  overflow: hidden; /* Contain any pseudo-element animations */
+}
+
+/* Hover effect */
+.sexy-assign-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #005f8c, #0087b8); /* Darker gradient on hover */
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.3); /* Larger shadow */
+  transform: translateY(-2px); /* Slight lift effect */
+}
+
+/* Active (clicked) effect */
+.sexy-assign-button:active:not(:disabled) {
+  transform: translateY(0); /* Reset lift */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Smaller shadow */
+}
+
+/* Disabled state */
+.sexy-assign-button:disabled {
+  background: #cccccc; /* Gray background */
+  color: #666666; /* Muted text */
+  box-shadow: none; /* Remove shadow */
+  cursor: not-allowed; /* Not-allowed cursor */
+  transform: none; /* No transform */
+}
+
+/* Optional: Add a subtle shine effect on hover */
+.sexy-assign-button::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s ease;
+}
+
+.sexy-assign-button:hover:not(:disabled)::before {
+  left: 100%; /* Shine moves across */
+}
+
+/* Ensure compatibility with button-primary if needed */
+.button-primary.sexy-assign-button {
+  /* Override any conflicting button-primary styles */
+  border: none;
+  line-height: normal; /* Fix line-height issues */
+}
+
+/* Icon button styles */
+.sexy-assign-icon {
+  /* Base appearance */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px; /* Compact size */
+  height: 36px;
+  background: linear-gradient(135deg, #0073aa, #00a0d2); /* Blue gradient */
+  border: none; /* No border */
+  border-radius: 50%; /* Circular shape */
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+  cursor: pointer;
+  transition: all 0.3s ease; /* Smooth transitions */
+  padding: 0; /* Remove default padding */
+  overflow: hidden; /* Contain effects */
+}
+
+/* Icon styling */
+.sexy-assign-icon .dashicons {
+  font-size: 20px; /* Icon size */
+  color: #fff; /* White icon */
+  line-height: 1; /* Center icon */
+}
+
+/* Hover effect */
+.sexy-assign-icon:hover:not(:disabled) {
+  background: linear-gradient(135deg, #005f8c, #0087b8); /* Darker gradient */
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.3); /* Larger shadow */
+  transform: scale(1.1); /* Slight zoom */
+}
+
+/* Active (clicked) effect */
+.sexy-assign-icon:active:not(:disabled) {
+  transform: scale(1); /* Reset zoom */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Smaller shadow */
+}
+
+/* Disabled state */
+.sexy-assign-icon:disabled {
+  background: #cccccc; /* Gray background */
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.sexy-assign-icon:disabled .dashicons {
+  color: #666666; /* Muted icon color */
+}
+
+/* Focus state for accessibility */
+.sexy-assign-icon:focus:not(:disabled) {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(0, 115, 170, 0.5);
+}
+
+/* Optional shine effect on hover */
+.sexy-assign-icon::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s ease;
+}
+
+.sexy-assign-icon:hover:not(:disabled)::before {
+  left: 100%; /* Shine moves across */
+}
+
+/* Ensure compatibility with button-primary */
+.button-primary.sexy-assign-icon {
+  border: none;
+  line-height: normal;
+}
+/*!***************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[4].use[1]!./node_modules/postcss-loader/dist/cjs.js??ruleSet[1].rules[4].use[2]!./node_modules/sass-loader/dist/cjs.js??ruleSet[1].rules[4].use[3]!./src/Teams.scss ***!
+  \***************************************************************************************************************************************************************************************************************************************/
+.team-viewer {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.team-table {
+  width: 100%;
+  max-width: 1200px;
+  border-collapse: collapse;
+  font-size: 14px;
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  table-layout: fixed;
+}
+
+.team-table th,
+.team-table td {
+  padding: 10px;
+  border: 1px solid #ddd;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-table th:nth-child(1),
+.team-table td:nth-child(1) {
+  width: 80px; /* ID */
+}
+
+.team-table th:nth-child(2),
+.team-table td:nth-child(2) {
+  width: 200px; /* Team Name */
+}
+
+.team-table th:nth-child(3),
+.team-table td:nth-child(3) {
+  width: 120px; /* Image */
+}
+
+.team-table th:nth-child(4),
+.team-table td:nth-child(4) {
+  width: 180px; /* Upload Image */
+}
+
+.team-table th {
+  background-color: #f4f4f4;
+  font-weight: bold;
+}
+
+.team-table img {
+  max-width: 100px;
+  height: auto;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+input[type=file] {
+  font-size: 14px;
+  padding: 6px;
+}
+
+.search-container {
+  margin: 10px;
+}
+
+.search-container input {
+  padding: 8px;
+  width: 300px;
+  font-size: 16px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  outline: none;
+}
+
+.search-container input:focus {
+  border-color: #0073aa;
+  box-shadow: 0 0 5px rgba(0, 115, 170, 0.3);
+}
 /*!*************************************************************************************************************************************************************************************************************************************!*\
   !*** css ./node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[4].use[1]!./node_modules/postcss-loader/dist/cjs.js??ruleSet[1].rules[4].use[2]!./node_modules/sass-loader/dist/cjs.js??ruleSet[1].rules[4].use[3]!./src/App.scss ***!
   \*************************************************************************************************************************************************************************************************************************************/

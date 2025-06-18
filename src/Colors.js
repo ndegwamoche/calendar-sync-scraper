@@ -6,6 +6,7 @@ const Colors = ({ season, url, regions, ageGroups }) => {
     const [googleColors, setGoogleColors] = useState([]);
     const [levelColors, setLevelColors] = useState({});
     const [selectedLevel, setSelectedLevel] = useState('');
+    const [selectedColor, setSelectedColor] = useState('#000000');
     const [availableLevels, setAvailableLevels] = useState([]);
     const [allLevels, setAllLevels] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -156,7 +157,7 @@ const Colors = ({ season, url, regions, ageGroups }) => {
         fetchLevels();
     }, [selectedRegion, selectedAgeGroup, season]);
 
-    const handleAssignColor = async (levelID, googleColorId) => {
+    const handleAssignColor = async (levelID, googleColorId, hexColor) => {
         try {
             const response = await fetch(calendarScraperAjax.ajax_url, {
                 method: 'POST',
@@ -166,12 +167,19 @@ const Colors = ({ season, url, regions, ageGroups }) => {
                     _ajax_nonce: calendarScraperAjax.nonce,
                     level_id: levelID,
                     google_color_id: googleColorId,
+                    hex_color: hexColor
                 }),
             });
             const data = await response.json();
             if (data.success) {
-                setLevelColors((prev) => ({ ...prev, [levelID]: googleColorId }));
-                setSelectedLevel(''); // Reset dropdown to default
+                setLevelColors((prev) => ({
+                    ...prev,
+                    [levelID]: {
+                        google_color_id: googleColorId,
+                        hex_color: hexColor
+                    }
+                }));
+                setSelectedLevel('');
             } else {
                 console.error('Failed to save level color:', data.data?.message || 'Unknown error');
             }
@@ -244,7 +252,6 @@ const Colors = ({ season, url, regions, ageGroups }) => {
                 const data = await response.json();
                 if (data.success) {
                     setLevelColors({});
-                    // No need to update availableLevels here since the filter will handle it
                 } else {
                     console.error('Failed to clear level colors:', data.data?.message || 'Unknown error');
                 }
@@ -544,8 +551,34 @@ const Colors = ({ season, url, regions, ageGroups }) => {
                     </select>
                 </div>
             </div>
+
             <div className="form-section">
-                <h4>Available Colors:</h4>
+                <h4>Select Color:</h4>
+                <div className="color-picker">
+                    <input
+                        type="color"
+                        value={selectedColor}
+                        onChange={(e) => setSelectedColor(e.target.value)}
+                        disabled={!selectedLevel}
+                    />
+                    <button
+                        className="button button-primary sexy-assign-button"
+                        onClick={() => {
+                            if (selectedLevel && selectedColor) {
+                                handleAssignColor(selectedLevel, 0, selectedColor);
+                            }
+                        }}
+                        disabled={!selectedLevel}
+                        title="Assign selected color to tournament level"
+                        aria-label="Assign color"
+                    >
+                        <span className="dashicons dashicons-art"></span> Assign Color
+                    </button>
+                </div>
+            </div>
+
+            {/* <div className="form-section">
+                <h4>Google Available Colors:</h4>
                 <div className="color-swatches">
                     {googleColors.map((colorObj) => (
                         <div
@@ -555,13 +588,13 @@ const Colors = ({ season, url, regions, ageGroups }) => {
                             title={colorObj.color_name}
                             onClick={() => {
                                 if (selectedLevel) {
-                                    handleAssignColor(selectedLevel, colorObj.google_color_id);
+                                    handleAssignColor(selectedLevel, colorObj.google_color_id, '');
                                 }
                             }}
                         ></div>
                     ))}
                 </div>
-            </div>
+            </div> */}
 
             <div className="form-section">
                 <h4>Assigned Colors:</h4>
@@ -572,9 +605,9 @@ const Colors = ({ season, url, regions, ageGroups }) => {
                     <p>No colors assigned.</p>
                 ) : (
                     <ul className="assigned-colors">
-                        {Object.entries(levelColors).map(([levelID, googleColorId]) => {
+                        {Object.entries(levelColors).map(([levelID, colorData]) => {
                             const level = allLevels.find(l => l.id === levelID);
-                            const hexCode = getHexCode(googleColorId);
+                            const hexCode = colorData.hex_color;
                             return (
                                 <li key={levelID}>
                                     <span className="level-name">{level?.level_name || 'Unknown Level'}</span>

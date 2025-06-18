@@ -3,6 +3,7 @@ import Swal from 'sweetalert2';
 import Logs from './Logs';
 import Colors from './Colors';
 import Settings from './Settings';
+import Teams from './Teams';
 import './App.scss';
 
 const App = () => {
@@ -269,6 +270,13 @@ const App = () => {
                     >
                         Settings
                     </a>
+                    <a
+                        href="#teams"
+                        className={`nav-tab ${activeTab === 'teams' ? 'nav-tab-active' : ''}`}
+                        onClick={(e) => { e.preventDefault(); setActiveTab('teams'); }}
+                    >
+                        Teams
+                    </a>
                 </h2>
 
                 <div id="tab-content">
@@ -397,6 +405,10 @@ const App = () => {
 
                     {activeTab === 'settings' && (
                         <Settings />
+                    )}
+
+                    {activeTab === 'teams' && (
+                        <Teams />
                     )}
                 </div>
             </div>

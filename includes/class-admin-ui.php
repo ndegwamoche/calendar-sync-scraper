@@ -29,18 +29,22 @@ class Admin_UI
         add_action('wp_ajax_run_all_calendar_scraper', [$this->scraper, 'run_all_calendar_scraper']);
         add_action('wp_ajax_get_scraper_progress', [$this->scraper, 'get_scraper_progress']);
 
+        //get logger
+        add_action('wp_ajax_get_log_info', [$this->logger, 'get_log_info']);
+
         //get data
         add_action('wp_ajax_get_tournament_options', [$this, 'get_tournament_options']);
-        add_action('wp_ajax_get_log_info', [$this->logger, 'get_log_info']);
         add_action('wp_ajax_get_tournament_levels_by_region_age', [$this->data_loader, 'get_tournament_levels_by_region_age']);
         add_action('wp_ajax_get_all_tournament_levels', [$this->data_loader, 'get_all_tournament_levels']);
 
+        //manage colors
         add_action('wp_ajax_save_level_color', [$this->data_loader, 'save_level_color']);
         add_action('wp_ajax_get_level_colors', [$this->data_loader, 'get_level_colors']);
         add_action('wp_ajax_remove_level_color', [$this->data_loader, 'remove_level_color']);
         add_action('wp_ajax_clear_level_colors', [$this->data_loader, 'clear_level_colors']);
         add_action('wp_ajax_get_google_colors', [$this->data_loader, 'get_google_colors']);
 
+        //manage settings
         add_action('wp_ajax_save_google_credentials', [$this->google_calendar, 'save_google_credentials']);
         add_action('wp_ajax_get_google_credentials', [$this->google_calendar, 'get_google_credentials']);
         add_action('wp_ajax_clear_google_calendar_events', [$this->google_calendar, 'clear_google_calendar_events']);
@@ -52,6 +56,11 @@ class Admin_UI
         add_action('wp_ajax_check_tournament_pool', [$this->scraper, 'check_tournament_pool']);
         add_action('wp_ajax_insert_tournament_level', [$this->scraper, 'insert_tournament_level']);
         add_action('wp_ajax_insert_tournament_pool', [$this->scraper, 'insert_tournament_pool']);
+
+        //teams
+        add_action('wp_ajax_get_teams', [$this->data_loader, 'get_teams']);
+        add_action('wp_ajax_upload_team_image_from_library', [$this->data_loader, 'upload_team_image_from_library']);
+        add_action('wp_ajax_run_all_teams_scraper', [$this->scraper, 'run_all_teams_scraper']);
     }
 
     public function register_admin_page()
@@ -70,11 +79,14 @@ class Admin_UI
     {
         if ($hook !== 'toplevel_page_calendar-sync-scraper') return;
 
+        // Enqueue media scripts
+        wp_enqueue_media();
+
         // Enqueue JS
         wp_enqueue_script(
             'calendar-sync-scraper-js',
             CAL_SYNC_SCRAPER_URL . 'build/index.js',
-            ['wp-blocks', 'wp-element', 'wp-editor', 'wp-components'],
+            ['wp-blocks', 'wp-element', 'wp-editor', 'wp-components', 'media-upload', 'media-editor'],
             filemtime(CAL_SYNC_SCRAPER_PATH . 'build/index.js'),
             true
         );

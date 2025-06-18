@@ -67,6 +67,76 @@ class Scraper
         }
     }
 
+    private function scrape_team_results($driver, $url)
+    {
+        try {
+            $driver->get($url);
+            $wait = new WebDriverWait($driver, 15);
+
+            $lastHeight = $driver->executeScript('return document.body.scrollHeight;');
+            for ($i = 0; $i < 2; $i++) {
+                $driver->executeScript('window.scrollTo(0, document.body.scrollHeight);');
+                usleep(500000);
+                $newHeight = $driver->executeScript('return document.body.scrollHeight;');
+                $rowCount = $driver->executeScript('return document.querySelectorAll("table.groupstandings tr:not(.headerrow)").length;');
+                if ($rowCount > 0 || $newHeight === $lastHeight) break;
+                $lastHeight = $newHeight;
+            }
+
+            $wait->until(
+                WebDriverExpectedCondition::visibilityOfElementLocated(
+                    WebDriverBy::cssSelector('table.groupstandings tr:not(.headerrow)')
+                )
+            );
+
+            try {
+                $html = $driver->getPageSource();
+            } catch (UnexpectedAlertOpenException $e) {
+                $alert = $driver->switchTo()->alert();
+                $alert->dismiss();
+                $html = $driver->getPageSource();
+            }
+
+            if (empty($html)) {
+                return ["->error: Empty page source returned for URL: $url"];
+            }
+
+            $crawler = new Crawler($html);
+            $tableCrawler = $crawler->filter('table.groupstandings');
+
+            if ($tableCrawler->count() === 0) {
+                return ["->no groupstandings table"];
+            }
+
+            $teams = [];
+            $tableCrawler->filter('tr:not(.headerrow)')->each(function (Crawler $tr) use (&$teams) {
+                $teamNode = $tr->filter('td.team a');
+                if ($teamNode->count() === 0) {
+                    return; // Skip rows without a team link (e.g., "Vakant 1")
+                }
+
+                $teamName = trim($teamNode->text());
+                $onclick = $teamNode->attr('onclick');
+                $teamId = null;
+
+                if (preg_match("/ShowStanding\((?:'[^']*',\s*){5}'(\d+)'/", $onclick, $matches)) {
+                    $teamId = $matches[1];
+                }
+
+                if ($teamId) {
+                    $teams[] = [
+                        'team_id' => $teamId,
+                        'team_name' => $teamName
+                    ];
+                }
+            });
+
+            return $teams;
+        } catch (\Exception $e) {
+            return ["->error: " . htmlspecialchars($e->getMessage())];
+        }
+    }
+
     private function scrape_results($driver, $url, $venue)
     {
         try {
@@ -194,6 +264,7 @@ class Scraper
                 $region_name = $pool['region_name'];
                 $age_group_name = $pool['age_group_name'];
                 $google_color_id = $pool['google_color_id'] ?? 0;
+                $hex_color = $pool['hex_color'] ?? '#039be5';
 
                 $url = str_replace(
                     ['{season}', '{region}', '{group}', '{pool}'],
@@ -224,7 +295,9 @@ class Scraper
                         $season,
                         $region,
                         $ageGroup,
-                        $poolValue
+                        $poolValue,
+                        $venue,
+                        $hex_color
                     );
 
                     // $google_calendar_sync = new Google_Calendar_Sync();
@@ -507,5 +580,41 @@ class Scraper
             'pool_id' => $this->wpdb->insert_id,
             'error' => $this->wpdb->last_error
         ]);
+    }
+
+    public function run_all_teams_scraper()
+    {
+        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
+
+        $season = sanitize_text_field($_POST['season']);
+        $linkStructure = sanitize_text_field($_POST['link_structure']);
+
+        $all_pools = $this->loader->get_all_tournament_pools($season);
+
+        // Initialize the WebDriver once
+        $driver = $this->init_driver();
+
+        foreach ($all_pools as $pool) {
+            $region = $pool['region_id'];
+            $ageGroup = $pool['age_group_id'];
+            $poolValue = $pool['pool_value'];
+
+            $url = str_replace(
+                ['{season}', '{region}', '{group}', '{pool}'],
+                [$season, $region, $ageGroup, $poolValue],
+                $linkStructure
+            );
+
+
+            $teams = $this->scrape_team_results($driver, $url);
+
+            $this->loader->insert_teams($teams, $season, $region, $ageGroup, $poolValue);
+        }
+
+        $this->quit_driver();
+
+        $response['data']['message'] = "Scraping teams completed successfully!";
+
+        wp_send_json($response);
     }
 }

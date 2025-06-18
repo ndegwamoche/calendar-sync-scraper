@@ -6,6 +6,7 @@ class Events_Calendar_Sync
 {
     private $time_offset;
     private $colors_table;
+    private $teams_table;
     private $wpdb;
 
     public function __construct()
@@ -15,9 +16,10 @@ class Events_Calendar_Sync
 
         $this->time_offset = get_option('cal_sync_time_offset', '+3 hours');
         $this->colors_table = $wpdb->prefix . 'cal_sync_colors';
+        $this->teams_table = $wpdb->prefix . 'cal_sync_teams';
     }
 
-    public function insertMatches($matches, $season_name, $region_name, $age_group_name, $pool_name, $tournament_level, $color_id, $season, $region, $ageGroup, $pool)
+    public function insertMatches($matches, $season_name, $region_name, $age_group_name, $pool_name, $tournament_level, $color_id, $season, $region, $ageGroup, $pool, $venue, $hex_color)
     {
         if (!is_array($matches) || empty($matches)) {
             error_log("Events Calendar Sync: No matches provided or invalid matches array");
@@ -39,14 +41,17 @@ class Events_Calendar_Sync
                 $description = "<strong>{$region_name} {$season_name}</strong><br>" .
                     "<a href='https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#3,{$season},{$pool},{$ageGroup},{$region},{$match['hjemmehold_id']},,4203' target='_blank'>$tournament_level $pool_name</a><br><br>" .
                     "<a href='https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#2,{$season},{$pool},{$ageGroup},{$region},,,4203' target='_blank'>{$match['hjemmehold']}</a><br>" .
-                    "{$match['udehold']}, Grøndal MultiCenter<br><br>" .
+                    "{$match['udehold']}<br><br>" .
                     "<strong>Resultat: {$match['resultat']}<br>" .
                     "Point: {$match['point']}</strong><br><br>" .
                     "<a href='https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#5,{$season},{$pool},{$ageGroup},{$region},,{$match['no']},4203' target='_blank'>Kampdetaljer</a>";
 
-                $colors = $this->map_color_id_to_hex($color_id);
-                $event_color = $colors['background'];
-                $font_color = $colors['font'];
+                // $colors = $this->map_color_id_to_hex($color_id);
+                // $event_color = $colors['background']; 
+                // $font_color = $colors['font'];
+
+                $event_color = $hex_color ?? '#039be5';
+                $font_color = '#FFFFFF';
 
                 // Use Europe/Copenhagen timezone
                 $tz = new \DateTimeZone('Europe/Copenhagen');
@@ -80,6 +85,18 @@ class Events_Calendar_Sync
                 if (is_wp_error($event_id)) {
                     error_log("Events Calendar Sync: Failed to insert match {$match['no']}: " . $event_id->get_error_message());
                     continue;
+                }
+
+                // Set featured image from home team's image_url
+                if (!empty($match['hjemmehold'])) {
+                    $image_id = $this->wpdb->get_var($this->wpdb->prepare(
+                        "SELECT image_id FROM {$this->teams_table} WHERE team_name = %s LIMIT 1",
+                        $match['hjemmehold']
+                    ));
+
+                    if ($image_id != 0) {
+                        set_post_thumbnail($event_id, $image_id);
+                    }
                 }
             } catch (\Exception $e) {
                 error_log("Events Calendar Sync: Failed to insert match {$match['no']}: " . $e->getMessage());

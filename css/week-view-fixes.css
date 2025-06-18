@@ -7,7 +7,7 @@
     min-height: 700px;
     background: #ffffff;
     border-radius: 28px;
-    padding-bottom: 0px !important;
+    padding-bottom: 10px !important;
     padding-top: 40px;
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
 }
@@ -60,4 +60,12 @@
 
 .tribe-events .tribe-events-calendar-month__day--past .tribe-events-calendar-month__calendar-event {
     opacity: 1 !important;
+}
+
+.tribe-events-calendar-latest-past__event-featured-image {
+    border-radius: 5px !important;
+}
+
+.tribe-events-calendar-list__event-featured-image {
+    border-radius: 5px !important;
 }
