@@ -63,9 +63,13 @@
 }
 
 .tribe-events-calendar-latest-past__event-featured-image {
-    border-radius: 5px !important;
+    border-radius: 10px !important;
 }
 
 .tribe-events-calendar-list__event-featured-image {
-    border-radius: 5px !important;
+    border-radius: 10px !important;
+}
+
+.tribe-events-calendar-day__event-featured-image {
+    border-radius: 10px !important;
 }
