@@ -5199,7 +5199,7 @@ const Colors = ({
   const [googleColors, setGoogleColors] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
   const [levelColors, setLevelColors] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({});
   const [selectedLevel, setSelectedLevel] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('');
-  const [selectedColor, setSelectedColor] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('#000000');
+  const [selectedColor, setSelectedColor] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('#039be5');
   const [availableLevels, setAvailableLevels] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
   const [allLevels, setAllLevels] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
   const [loading, setLoading] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(true);
@@ -6304,7 +6304,9 @@ __webpack_require__.r(__webpack_exports__);
 const Teams = () => {
   const [teams, setTeams] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
   const [loading, setLoading] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(true);
-  const [searchTerm, setSearchTerm] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(''); // New state for search term
+  const [searchTerm, setSearchTerm] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('');
+  const [selectedColors, setSelectedColors] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({}); // Per-team selected colors
+  const [errorMessage, setErrorMessage] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(''); // For error/success feedback
 
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
     const fetchTeams = async () => {
@@ -6312,12 +6314,15 @@ const Teams = () => {
         const response = await fetch(`${calendarScraperAjax.ajax_url}?action=get_teams`);
         const result = await response.json();
         if (result.success) {
-          setTeams(result.data);
+          setTeams(result.data.map(team => ({
+            ...team,
+            color: team.team_color || ''
+          })));
         } else {
-          console.error('Fetch teams failed:', result.data?.message);
+          setErrorMessage(result.data?.message || 'Failed to fetch teams');
         }
       } catch (error) {
-        console.error('Error fetching teams:', error);
+        setErrorMessage('Error fetching teams: ' + error.message);
       }
       setLoading(false);
     };
@@ -6325,7 +6330,7 @@ const Teams = () => {
   }, []);
   const openMediaLibrary = (teamId, teamName) => {
     if (!window.wp?.media) {
-      console.error('WordPress media library is not available.');
+      setErrorMessage('WordPress media library is not available.');
       return;
     }
     const mediaFrame = wp.media({
@@ -6343,13 +6348,14 @@ const Teams = () => {
       if (attachment?.id && attachment?.url) {
         uploadImageFromMediaLibrary(teamId, teamName, attachment);
       } else {
-        console.error('Invalid attachment:', attachment);
+        setErrorMessage('Invalid attachment selected.');
       }
     });
     mediaFrame.open();
   };
   const uploadImageFromMediaLibrary = async (teamId, teamName, media) => {
     setLoading(true);
+    setErrorMessage('');
     const formData = new FormData();
     formData.append('action', 'upload_team_image_from_library');
     formData.append('_ajax_nonce', calendarScraperAjax.nonce);
@@ -6368,20 +6374,52 @@ const Teams = () => {
           image_url: result.data.image_url
         } : team));
       } else {
-        console.error('Upload failed:', result.data?.message);
+        setErrorMessage(result.data?.message || 'Failed to upload image');
       }
     } catch (error) {
-      console.error('Error uploading image:', error);
+      setErrorMessage('Error uploading image: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  const updateTeamColor = async (teamId, color, team_name) => {
+    setLoading(true);
+    setErrorMessage('');
+    const formData = new FormData();
+    formData.append('action', 'update_team_color');
+    formData.append('_ajax_nonce', calendarScraperAjax.nonce);
+    formData.append('team_id', teamId);
+    formData.append('color', color);
+    formData.append('team_name', team_name);
+    try {
+      const response = await fetch(calendarScraperAjax.ajax_url, {
+        method: 'POST',
+        body: formData
+      });
+      const result = await response.json();
+      if (result.success) {
+        setTeams(teams.map(team => team.id === teamId ? {
+          ...team,
+          color
+        } : team));
+        setSelectedColors(prev => ({
+          ...prev,
+          [teamId]: undefined
+        })); // Clear selected color
+        setErrorMessage('Team color updated successfully!');
+      } else {
+        setErrorMessage(result.data?.message || 'Failed to update color');
+      }
+    } catch (error) {
+      setErrorMessage('Error updating color: ' + error.message);
     } finally {
       setLoading(false);
     }
   };
   const handleSubmit = async e => {
     e.preventDefault();
-    if (!validateForm()) {
-      return;
-    }
     setLoading(true);
+    setErrorMessage('');
     try {
       const response = await fetch(calendarScraperAjax.ajax_url, {
         method: 'POST',
@@ -6397,30 +6435,37 @@ const Teams = () => {
       });
       const data = await response.json();
       if (data.success) {
-        setMessage({
-          text: 'Settings saved successfully!',
-          type: 'success'
-        });
+        setErrorMessage('Settings saved successfully!');
       } else {
-        setMessage({
-          text: `Failed to save settings: ${data.data?.message || 'Unknown error'}`,
-          type: 'error'
-        });
+        setErrorMessage(`Failed to save settings: ${data.data?.message || 'Unknown error'}`);
       }
     } catch (error) {
-      setMessage({
-        text: `Error saving settings: ${error.message}`,
-        type: 'error'
-      });
+      setErrorMessage(`Error saving settings: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
-
-  // Filter teams based on search term
   const filteredTeams = teams.filter(team => team.team_name.toLowerCase().includes(searchTerm.toLowerCase()));
   return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
-    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
+    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("form", {
+      onSubmit: handleSubmit,
+      children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
+        className: "form-control-group",
+        style: {
+          marginTop: '10px',
+          marginLeft: '10px'
+        },
+        children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("button", {
+          type: "submit",
+          className: "button button-primary",
+          disabled: loading,
+          children: "Run Teams Scraping"
+        })
+      })
+    }), errorMessage && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
+      className: "error-message",
+      children: errorMessage
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
       className: "search-container",
       style: {
         margin: '10px'
@@ -6431,7 +6476,7 @@ const Teams = () => {
         value: searchTerm,
         onChange: e => setSearchTerm(e.target.value),
         style: {
-          padding: '0px 8px',
+          padding: '8px',
           width: '100%',
           fontSize: '14px',
           borderRadius: '4px',
@@ -6452,12 +6497,14 @@ const Teams = () => {
               children: "Image"
             }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("th", {
               children: "Choose Image"
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("th", {
+              children: "Team Color"
             })]
           })
         }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("tbody", {
           children: loading ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("tr", {
             children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
-              colSpan: "6",
+              colSpan: "5",
               children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
                 className: "loader",
                 children: "Loading..."
@@ -6481,15 +6528,53 @@ const Teams = () => {
                 children: "No Image"
               })
             }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
+              style: {
+                textAlign: 'center'
+              },
               children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("button", {
                 type: "button",
+                className: "button button-primary",
                 onClick: () => openMediaLibrary(team.id, team.team_name),
+                style: {
+                  padding: '0px 10px'
+                },
                 children: "Choose Image"
               })
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("td", {
+              style: {
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                justifyContent: 'center'
+              },
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("input", {
+                type: "color",
+                value: selectedColors[team.id] || team.color || '#039be5',
+                onChange: e => setSelectedColors({
+                  ...selectedColors,
+                  [team.id]: e.target.value
+                }),
+                style: {
+                  width: '50px',
+                  height: '40px',
+                  cursor: 'pointer',
+                  marginRight: '10px'
+                }
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("button", {
+                type: "button",
+                className: "button button-primary",
+                onClick: () => updateTeamColor(team.id, selectedColors[team.id] || team.color || '#039be5', team.team_name),
+                title: "Assign selected color to team",
+                "aria-label": "Assign color",
+                style: {
+                  padding: '0px 10px'
+                },
+                children: "Assign"
+              })]
             })]
           }, team.id)) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("tr", {
             children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
-              colSpan: "6",
+              colSpan: "5",
               children: "No teams found matching your search."
             })
           })

@@ -54,7 +54,7 @@ class Data_Loader
     public function get_teams()
     {
         $results = $this->wpdb->get_results(
-            "SELECT id, team_name, team_value, image_id, image_url FROM {$this->teams_table}",
+            "SELECT id, team_name, team_value, image_id, image_url,team_color FROM {$this->teams_table}",
             OBJECT
         );
 
@@ -361,11 +361,11 @@ class Data_Loader
 
     public function clear_level_colors()
     {
-        $result = $this->wpdb->query("UPDATE {$this->tournament_levels_table} SET google_color_id = NULL");
+        $result = $this->wpdb->query("UPDATE {$this->tournament_levels_table} SET google_color_id = NULL, hex_color = NULL");
         if ($result !== false) {
             wp_send_json_success(['message' => 'All colors cleared successfully']);
         } else {
-            wp_send_json_error(['message' => 'Failed to clear colors']);
+            wp_send_json_error(['message' => 'Failed to clear colors' . $this->wpdb->last_error]);
         }
     }
 
@@ -420,6 +420,74 @@ class Data_Loader
         }
 
         wp_send_json_success(['image_url' => $image_url]);
+    }
+
+    public function update_team_color()
+    {
+        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
+
+        $team_id = isset($_POST['team_id']) ? intval($_POST['team_id']) : 0;
+        $hex_color = isset($_POST['color']) ? sanitize_text_field($_POST['color']) : '';
+        $team_name = isset($_POST['team_name']) ? sanitize_text_field($_POST['team_name']) : '';
+
+        if (!$team_id || !$hex_color) {
+            wp_send_json_error(['message' => 'Invalid team or hex color']);
+        }
+
+        // Check if the color is already used by another team
+        $existing_team = $this->wpdb->get_row(
+            $this->wpdb->prepare(
+                "SELECT id, team_name FROM {$this->teams_table} WHERE team_color = %s AND id != %d",
+                $hex_color,
+                $team_id
+            ),
+            ARRAY_A
+        );
+
+        if ($existing_team) {
+            wp_send_json_error([
+                'message' => sprintf(
+                    'This color is already assigned to the team "%s".',
+                    esc_html($existing_team['team_name'])
+                )
+            ]);
+            return;
+        }
+
+        // Update team data
+        $updated = $this->wpdb->update(
+            $this->teams_table,
+            [
+                'team_color' => $hex_color,
+            ],
+            ['id' => $team_id],
+            ['%s'],
+            ['%d']
+        );
+
+        if ($updated === false) {
+            wp_send_json_error(['message' => 'Failed to update team color: ' . $this->wpdb->last_error]);
+        }
+
+        // Find and update events with this team
+        $events = $this->wpdb->get_results($this->wpdb->prepare(
+            "SELECT ID FROM {$this->wpdb->posts} WHERE post_type = 'tribe_events' AND post_status = 'publish' AND post_content LIKE %s",
+            '%' . $this->wpdb->esc_like("<a href='https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#2,") . '%' . $this->wpdb->esc_like($team_name) . '</a>%'
+        ));
+
+        if ($events) {
+            foreach ($events as $event) {
+
+                // Use the hex_color value
+                if (!empty($hex_color)) {
+                    update_post_meta($event->ID, '_tribe_event_color', $hex_color);
+                } else {
+                    error_log("Team Image Updater: Failed to set colors for event {$event->ID}");
+                }
+            }
+        }
+
+        wp_send_json_success(['team_color' => $hex_color]);
     }
 
     public function insert_teams($teams, $season, $region, $ageGroup, $poolValue)

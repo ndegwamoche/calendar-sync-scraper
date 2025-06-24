@@ -61,6 +61,7 @@ class Admin_UI
         add_action('wp_ajax_get_teams', [$this->data_loader, 'get_teams']);
         add_action('wp_ajax_upload_team_image_from_library', [$this->data_loader, 'upload_team_image_from_library']);
         add_action('wp_ajax_run_all_teams_scraper', [$this->scraper, 'run_all_teams_scraper']);
+        add_action('wp_ajax_update_team_color', [$this->data_loader, 'update_team_color']);
     }
 
     public function register_admin_page()

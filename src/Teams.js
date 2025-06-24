@@ -4,7 +4,9 @@ import './Teams.scss';
 const Teams = () => {
     const [teams, setTeams] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState(''); // New state for search term
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedColors, setSelectedColors] = useState({}); // Per-team selected colors
+    const [errorMessage, setErrorMessage] = useState(''); // For error/success feedback
 
     useEffect(() => {
         const fetchTeams = async () => {
@@ -12,12 +14,12 @@ const Teams = () => {
                 const response = await fetch(`${calendarScraperAjax.ajax_url}?action=get_teams`);
                 const result = await response.json();
                 if (result.success) {
-                    setTeams(result.data);
+                    setTeams(result.data.map(team => ({ ...team, color: team.team_color || '' })));
                 } else {
-                    console.error('Fetch teams failed:', result.data?.message);
+                    setErrorMessage(result.data?.message || 'Failed to fetch teams');
                 }
             } catch (error) {
-                console.error('Error fetching teams:', error);
+                setErrorMessage('Error fetching teams: ' + error.message);
             }
             setLoading(false);
         };
@@ -26,7 +28,7 @@ const Teams = () => {
 
     const openMediaLibrary = (teamId, teamName) => {
         if (!window.wp?.media) {
-            console.error('WordPress media library is not available.');
+            setErrorMessage('WordPress media library is not available.');
             return;
         }
 
@@ -42,7 +44,7 @@ const Teams = () => {
             if (attachment?.id && attachment?.url) {
                 uploadImageFromMediaLibrary(teamId, teamName, attachment);
             } else {
-                console.error('Invalid attachment:', attachment);
+                setErrorMessage('Invalid attachment selected.');
             }
         });
 
@@ -51,6 +53,7 @@ const Teams = () => {
 
     const uploadImageFromMediaLibrary = async (teamId, teamName, media) => {
         setLoading(true);
+        setErrorMessage('');
 
         const formData = new FormData();
         formData.append('action', 'upload_team_image_from_library');
@@ -70,10 +73,43 @@ const Teams = () => {
                     team.id === teamId ? { ...team, image_url: result.data.image_url } : team
                 ));
             } else {
-                console.error('Upload failed:', result.data?.message);
+                setErrorMessage(result.data?.message || 'Failed to upload image');
             }
         } catch (error) {
-            console.error('Error uploading image:', error);
+            setErrorMessage('Error uploading image: ' + error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const updateTeamColor = async (teamId, color, team_name) => {
+        setLoading(true);
+        setErrorMessage('');
+
+        const formData = new FormData();
+        formData.append('action', 'update_team_color');
+        formData.append('_ajax_nonce', calendarScraperAjax.nonce);
+        formData.append('team_id', teamId);
+        formData.append('color', color);
+        formData.append('team_name', team_name);
+
+        try {
+            const response = await fetch(calendarScraperAjax.ajax_url, {
+                method: 'POST',
+                body: formData,
+            });
+            const result = await response.json();
+            if (result.success) {
+                setTeams(teams.map((team) =>
+                    team.id === teamId ? { ...team, color } : team
+                ));
+                setSelectedColors((prev) => ({ ...prev, [teamId]: undefined })); // Clear selected color
+                setErrorMessage('Team color updated successfully!');
+            } else {
+                setErrorMessage(result.data?.message || 'Failed to update color');
+            }
+        } catch (error) {
+            setErrorMessage('Error updating color: ' + error.message);
         } finally {
             setLoading(false);
         }
@@ -81,11 +117,8 @@ const Teams = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!validateForm()) {
-            return;
-        }
-
         setLoading(true);
+        setErrorMessage('');
         try {
             const response = await fetch(calendarScraperAjax.ajax_url, {
                 method: 'POST',
@@ -99,25 +132,39 @@ const Teams = () => {
             });
             const data = await response.json();
             if (data.success) {
-                setMessage({ text: 'Settings saved successfully!', type: 'success' });
+                setErrorMessage('Settings saved successfully!');
             } else {
-                setMessage({ text: `Failed to save settings: ${data.data?.message || 'Unknown error'}`, type: 'error' });
+                setErrorMessage(`Failed to save settings: ${data.data?.message || 'Unknown error'}`);
             }
         } catch (error) {
-            setMessage({ text: `Error saving settings: ${error.message}`, type: 'error' });
+            setErrorMessage(`Error saving settings: ${error.message}`);
         } finally {
             setLoading(false);
         }
     };
 
-    // Filter teams based on search term
     const filteredTeams = teams.filter((team) =>
         team.team_name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
         <div>
-            {/* Search Input */}
+
+            <form onSubmit={handleSubmit}>
+                <div className="form-control-group" style={{ marginTop: '10px', marginLeft: '10px' }}>
+                    <button type="submit" className="button button-primary" disabled={loading}>
+                        Run Teams Scraping
+                    </button>
+                </div>
+            </form>
+
+            {/* Error Message Display */}
+            {errorMessage && (
+                <div className="error-message">
+                    {errorMessage}
+                </div>
+            )}
+
             <div className="search-container" style={{ margin: '10px' }}>
                 <input
                     type="text"
@@ -125,7 +172,7 @@ const Teams = () => {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     style={{
-                        padding: '0px 8px',
+                        padding: '8px',
                         width: '100%',
                         fontSize: '14px',
                         borderRadius: '4px',
@@ -133,14 +180,6 @@ const Teams = () => {
                     }}
                 />
             </div>
-
-            {/* <form onSubmit={handleSubmit}>
-                <div className="form-control-group" style={{ marginTop: '10px', marginLeft: '10px' }}>
-                    <button type="submit" className="button button-primary" disabled={loading}>
-                        Run Teams Scraping
-                    </button>
-                </div>
-            </form> */}
 
             <div className="team-viewer">
                 <table className="team-table">
@@ -150,12 +189,13 @@ const Teams = () => {
                             <th>Team Name</th>
                             <th>Image</th>
                             <th>Choose Image</th>
+                            <th>Team Color</th>
                         </tr>
                     </thead>
                     <tbody>
                         {loading ? (
                             <tr>
-                                <td colSpan="6">
+                                <td colSpan="5">
                                     <div className="loader">Loading...</div>
                                 </td>
                             </tr>
@@ -175,16 +215,39 @@ const Teams = () => {
                                             <em>No Image</em>
                                         )}
                                     </td>
-                                    <td>
-                                        <button type="button" onClick={() => openMediaLibrary(team.id, team.team_name)}>
+                                    <td style={{ textAlign: 'center' }}>
+                                        <button
+                                            type="button"
+                                            className="button button-primary"
+                                            onClick={() => openMediaLibrary(team.id, team.team_name)}
+                                            style={{ padding: '0px 10px' }}
+                                        >
                                             Choose Image
+                                        </button>
+                                    </td>
+                                    <td style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center' }}>
+                                        <input
+                                            type="color"
+                                            value={selectedColors[team.id] || team.color || '#039be5'}
+                                            onChange={(e) => setSelectedColors({ ...selectedColors, [team.id]: e.target.value })}
+                                            style={{ width: '50px', height: '40px', cursor: 'pointer', marginRight: '10px' }}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="button button-primary"
+                                            onClick={() => updateTeamColor(team.id, selectedColors[team.id] || team.color || '#039be5', team.team_name)}
+                                            title="Assign selected color to team"
+                                            aria-label="Assign color"
+                                            style={{ padding: '0px 10px' }}
+                                        >
+                                            Assign
                                         </button>
                                     </td>
                                 </tr>
                             ))
                         ) : (
                             <tr>
-                                <td colSpan="6">No teams found matching your search.</td>
+                                <td colSpan="5">No teams found matching your search.</td>
                             </tr>
                         )}
                     </tbody>

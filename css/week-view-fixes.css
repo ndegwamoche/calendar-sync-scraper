@@ -73,3 +73,93 @@
 .tribe-events-calendar-day__event-featured-image {
     border-radius: 10px !important;
 }
+
+.tribe-events-print-button {
+    display: block !important;
+    margin-left: auto !important;
+    margin-bottom: 20px !important;
+    background-color: #1e73be !important;
+    color: #ffffff !important;
+    padding: 12px 24px !important;
+    border: none !important;
+    border-radius: 4px !important;
+    font-size: 16px !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    transition: background-color 0.3s ease, transform 0.1s ease !important;
+}
+
+.tribe-events-print-button:hover {
+    background-color: #145b96 !important;
+    transform: translateY(-1px) !important;
+}
+
+.tribe-events-print-button:active {
+    transform: translateY(0) !important;
+}
+
+@media print {
+
+    /* Hide WordPress header, admin bar, footer, and other non-event elements */
+    #wpadminbar,
+    #header,
+    #headerimg,
+    hr,
+    #footer,
+    .tribe-events-header,
+    .tribe-events-c-top-bar,
+    .tribe-events-c-nav,
+    .tribe-events-c-subscribe-dropdown__container,
+    .tribe-events-after-html,
+    .tribe-events-print-button {
+        display: none !important;
+    }
+
+    /* Hide images and their wrappers */
+    img,
+    .tribe-events-calendar-list__event-featured-image,
+    .tribe-events-calendar-list__event-featured-image-wrapper {
+        display: none !important;
+    }
+
+    /* Hide the event icon and hidden description */
+    .tribe-event-icon,
+    .tribe-events-calendar-latest-past__event-description {
+        display: none !important;
+    }
+
+    /* Ensure the event list and its contents are visible */
+    body,
+    #page,
+    .tribe-events,
+    .tribe-common-l-container.tribe-events-l-container,
+    .tribe-events-calendar-list,
+    .tribe-events-calendar-list__month-separator,
+    .tribe-events-calendar-list__event-row,
+    .tribe-events-calendar-list__event-date-tag,
+    .tribe-events-calendar-list__event-wrapper,
+    .tribe-events-calendar-list__event-details,
+    .tribe-events-calendar-list__event-header,
+    .tribe-events-calendar-list__event-datetime-wrapper,
+    .tribe-events-calendar-list__event-title {
+        display: block !important;
+        visibility: visible !important;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Prevent page breaks within event rows */
+    .tribe-events-calendar-list__event-row {
+        page-break-inside: avoid;
+    }
+
+    /* Adjust layout for clean printing */
+    .tribe-events-calendar-list__event-date-tag {
+        width: auto;
+        margin-right: 10px;
+    }
+
+    .tribe-events-calendar-list__event-wrapper {
+        width: 100%;
+    }
+}

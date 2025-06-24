@@ -390,6 +390,41 @@ class Scraper
         }
     }
 
+    public function run_all_teams_scraper()
+    {
+        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
+
+        $season = sanitize_text_field($_POST['season']);
+        $linkStructure = sanitize_text_field($_POST['link_structure']);
+
+        $all_pools = $this->loader->get_all_tournament_pools($season);
+
+        // Initialize the WebDriver once
+        $driver = $this->init_driver();
+
+        foreach ($all_pools as $pool) {
+            $region = $pool['region_id'];
+            $ageGroup = $pool['age_group_id'];
+            $poolValue = $pool['pool_value'];
+
+            $url = str_replace(
+                ['{season}', '{region}', '{group}', '{pool}'],
+                [$season, $region, $ageGroup, $poolValue],
+                $linkStructure
+            );
+
+            $teams = $this->scrape_team_results($driver, $url);
+
+            $this->loader->insert_teams($teams, $season, $region, $ageGroup, $poolValue);
+        }
+
+        $this->quit_driver();
+
+        $response['data']['message'] = "Scraping teams completed successfully!";
+
+        wp_send_json($response);
+    }
+
     public function fetch_page_html()
     {
         check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
@@ -580,41 +615,5 @@ class Scraper
             'pool_id' => $this->wpdb->insert_id,
             'error' => $this->wpdb->last_error
         ]);
-    }
-
-    public function run_all_teams_scraper()
-    {
-        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
-
-        $season = sanitize_text_field($_POST['season']);
-        $linkStructure = sanitize_text_field($_POST['link_structure']);
-
-        $all_pools = $this->loader->get_all_tournament_pools($season);
-
-        // Initialize the WebDriver once
-        $driver = $this->init_driver();
-
-        foreach ($all_pools as $pool) {
-            $region = $pool['region_id'];
-            $ageGroup = $pool['age_group_id'];
-            $poolValue = $pool['pool_value'];
-
-            $url = str_replace(
-                ['{season}', '{region}', '{group}', '{pool}'],
-                [$season, $region, $ageGroup, $poolValue],
-                $linkStructure
-            );
-
-
-            $teams = $this->scrape_team_results($driver, $url);
-
-            $this->loader->insert_teams($teams, $season, $region, $ageGroup, $poolValue);
-        }
-
-        $this->quit_driver();
-
-        $response['data']['message'] = "Scraping teams completed successfully!";
-
-        wp_send_json($response);
     }
 }

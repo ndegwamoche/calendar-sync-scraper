@@ -76,7 +76,7 @@ class Events_Calendar_Sync
                         '_EventOrigin'         => 'events-calendar',
                         '_EventShowMap'        => 'TRUE',
                         '_EventTimezone'       => 'Europe/Copenhagen',
-                        '_EventTimezoneAbbr'   => $start->format('T'), // CET or CEST
+                        '_EventTimezoneAbbr'   => $start->format('T'),
                     ]
                 ];
 
@@ -87,15 +87,24 @@ class Events_Calendar_Sync
                     continue;
                 }
 
-                // Set featured image from home team's image_url
-                if (!empty($match['hjemmehold'])) {
-                    $image_id = $this->wpdb->get_var($this->wpdb->prepare(
-                        "SELECT image_id FROM {$this->teams_table} WHERE team_name = %s LIMIT 1",
-                        $match['hjemmehold']
-                    ));
 
-                    if ($image_id != 0) {
-                        set_post_thumbnail($event_id, $image_id);
+                // Set featured image from home team's image_url and get hex_color
+                if (!empty($match['hjemmehold'])) {
+                    $row = $this->wpdb->get_row($this->wpdb->prepare(
+                        "SELECT image_id, hex_color FROM {$this->teams_table} WHERE team_name = %s LIMIT 1",
+                        $match['hjemmehold']
+                    ), ARRAY_A); // Return associative array
+
+                    if (!empty($row)) {
+                        // Set the featured image
+                        if (!empty($row['image_id'])) {
+                            set_post_thumbnail($event_id, $row['image_id']);
+                        }
+
+                        // Use the hex_color value
+                        if (!empty($row['hex_color'])) {
+                            update_post_meta($event_id, '_tribe_event_color', $row['hex_color']);
+                        }
                     }
                 }
             } catch (\Exception $e) {

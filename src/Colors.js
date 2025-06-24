@@ -6,7 +6,7 @@ const Colors = ({ season, url, regions, ageGroups }) => {
     const [googleColors, setGoogleColors] = useState([]);
     const [levelColors, setLevelColors] = useState({});
     const [selectedLevel, setSelectedLevel] = useState('');
-    const [selectedColor, setSelectedColor] = useState('#000000');
+    const [selectedColor, setSelectedColor] = useState('#039be5');
     const [availableLevels, setAvailableLevels] = useState([]);
     const [allLevels, setAllLevels] = useState([]);
     const [loading, setLoading] = useState(true);
