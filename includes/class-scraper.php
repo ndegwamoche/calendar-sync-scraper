@@ -1,7 +1,20 @@
 <?php
 
+/**
+ * Scraper class for the Calendar Sync Scraper plugin.
+ *
+ * This class handles web scraping operations using Selenium WebDriver to extract
+ * team and match data from specified URLs, integrating with the plugin's logging
+ * and data loading functionality.
+ *
+ * @package Calendar_Sync_Scraper
+ */
+
 namespace Calendar_Sync_Scraper;
 
+/**
+ * Include the autoloader for third-party dependencies.
+ */
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use Facebook\WebDriver\Remote\DesiredCapabilities;
@@ -12,35 +25,69 @@ use Facebook\WebDriver\WebDriverBy;
 use Facebook\WebDriver\WebDriverExpectedCondition;
 use Facebook\WebDriver\WebDriverWait;
 
+/**
+ * Class Scraper
+ *
+ * Manages web scraping operations for calendar and team data.
+ */
 class Scraper
 {
+    /**
+     * @var wpdb WordPress database access object.
+     */
     private $wpdb;
+
+    /**
+     * @var Logger Instance of the Logger class for logging activities.
+     */
     private $logger;
+
+    /**
+     * @var Data_Loader Instance of the Data_Loader class for data operations.
+     */
     private $loader;
+
+    /**
+     * @var RemoteWebDriver|null Selenium WebDriver instance for browser automation.
+     */
     private $driver;
 
+    /**
+     * Constructor.
+     *
+     * Initializes class properties and dependencies.
+     */
     public function __construct()
     {
+        // Access global WordPress database object.
         global $wpdb;
         $this->wpdb = $wpdb;
+
+        // Instantiate logger and data loader.
         $this->logger = new Logger();
         $this->loader = new Data_Loader();
-        $this->driver = null;
+        $this->driver = null; // WebDriver initialized on demand.
     }
 
+    /**
+     * Initialize Selenium WebDriver with Chrome in headless mode.
+     *
+     * @return RemoteWebDriver The initialized WebDriver instance.
+     * @throws \Exception If WebDriver initialization fails.
+     */
     private function init_driver()
     {
         if (!$this->driver) {
-            $serverUrl = 'http://localhost:9515';
+            $serverUrl = 'http://localhost:9515'; // Selenium server URL
             $capabilities = DesiredCapabilities::chrome();
             $capabilities->setCapability('goog:chromeOptions', [
                 'args' => [
-                    '--headless',
-                    '--disable-gpu',
-                    '--no-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--user-data-dir=' . '/tmp/chrome-profile-' . uniqid(),
-                    '--disable-extensions', // Reduce overhead
+                    '--headless',                     // Run Chrome in headless mode
+                    '--disable-gpu',                  // Disable GPU acceleration
+                    '--no-sandbox',                   // Disable sandbox for compatibility
+                    '--disable-dev-shm-usage',        // Avoid shared memory issues
+                    '--user-data-dir=' . '/tmp/chrome-profile-' . uniqid(), // Unique profile directory
+                    '--disable-extensions',           // Reduce overhead
                     '--blink-settings=imagesEnabled=false', // Disable images for faster loading
                 ]
             ]);
@@ -55,45 +102,60 @@ class Scraper
         return $this->driver;
     }
 
+    /**
+     * Safely quit the WebDriver session.
+     */
     private function quit_driver()
     {
         if ($this->driver) {
             try {
-                $this->driver->quit();
+                $this->driver->quit(); // Close the browser session
             } catch (\Exception $e) {
                 $this->logger->log('error', 'Error quitting WebDriver: ' . htmlspecialchars($e->getMessage()));
             }
-            $this->driver = null;
+            $this->driver = null; // Reset driver instance
         }
     }
 
+    /**
+     * Scrape team results from a given URL.
+     *
+     * @param RemoteWebDriver $driver The WebDriver instance.
+     * @param string $url The URL to scrape.
+     * @return array Array of team data or error message.
+     */
     private function scrape_team_results($driver, $url)
     {
         try {
-            $driver->get($url);
-            $wait = new WebDriverWait($driver, 15);
+            $driver->get($url); // Navigate to the URL
+            $wait = new WebDriverWait($driver, 15); // Wait up to 15 seconds for elements
 
+            // Scroll to load dynamic content
             $lastHeight = $driver->executeScript('return document.body.scrollHeight;');
             for ($i = 0; $i < 2; $i++) {
                 $driver->executeScript('window.scrollTo(0, document.body.scrollHeight);');
-                usleep(500000);
+                usleep(500000); // Wait 0.5 seconds for content to load
                 $newHeight = $driver->executeScript('return document.body.scrollHeight;');
                 $rowCount = $driver->executeScript('return document.querySelectorAll("table.groupstandings tr:not(.headerrow)").length;');
-                if ($rowCount > 0 || $newHeight === $lastHeight) break;
+                if ($rowCount > 0 || $newHeight === $lastHeight) {
+                    break; // Stop if rows are found or no new content loaded
+                }
                 $lastHeight = $newHeight;
             }
 
+            // Wait for table rows to be visible
             $wait->until(
                 WebDriverExpectedCondition::visibilityOfElementLocated(
                     WebDriverBy::cssSelector('table.groupstandings tr:not(.headerrow)')
                 )
             );
 
+            // Handle page source, accounting for possible alerts
             try {
                 $html = $driver->getPageSource();
             } catch (UnexpectedAlertOpenException $e) {
                 $alert = $driver->switchTo()->alert();
-                $alert->dismiss();
+                $alert->dismiss(); // Dismiss any alert
                 $html = $driver->getPageSource();
             }
 
@@ -112,13 +174,14 @@ class Scraper
             $tableCrawler->filter('tr:not(.headerrow)')->each(function (Crawler $tr) use (&$teams) {
                 $teamNode = $tr->filter('td.team a');
                 if ($teamNode->count() === 0) {
-                    return; // Skip rows without a team link (e.g., "Vakant 1")
+                    return; // Skip rows without a team link
                 }
 
                 $teamName = trim($teamNode->text());
                 $onclick = $teamNode->attr('onclick');
                 $teamId = null;
 
+                // Extract team ID from onclick attribute
                 if (preg_match("/ShowStanding\((?:'[^']*',\s*){5}'(\d+)'/", $onclick, $matches)) {
                     $teamId = $matches[1];
                 }
@@ -137,33 +200,46 @@ class Scraper
         }
     }
 
+    /**
+     * Scrape match results from a given URL, filtered by venue.
+     *
+     * @param RemoteWebDriver $driver The WebDriver instance.
+     * @param string $url The URL to scrape.
+     * @param string $venue The venue to filter matches by.
+     * @return array Array of match data or error message.
+     */
     private function scrape_results($driver, $url, $venue)
     {
         try {
-            $driver->get($url);
-            $wait = new WebDriverWait($driver, 15);
+            $driver->get($url); // Navigate to the URL
+            $wait = new WebDriverWait($driver, 15); // Wait up to 15 seconds for elements
 
+            // Scroll to load dynamic content
             $lastHeight = $driver->executeScript('return document.body.scrollHeight;');
             for ($i = 0; $i < 2; $i++) {
                 $driver->executeScript('window.scrollTo(0, document.body.scrollHeight);');
-                usleep(500000);
+                usleep(500000); // Wait 0.5 seconds for content to load
                 $newHeight = $driver->executeScript('return document.body.scrollHeight;');
                 $rowCount = $driver->executeScript('return document.querySelectorAll("table.matchlist tr:not(.headerrow)").length;');
-                if ($rowCount > 0 || $newHeight === $lastHeight) break;
+                if ($rowCount > 0 || $newHeight === $lastHeight) {
+                    break; // Stop if rows are found or no new content loaded
+                }
                 $lastHeight = $newHeight;
             }
 
+            // Wait for table rows to be visible
             $wait->until(
                 WebDriverExpectedCondition::visibilityOfElementLocated(
                     WebDriverBy::cssSelector('table.matchlist tr:not(.headerrow)')
                 )
             );
 
+            // Handle page source, accounting for possible alerts
             try {
                 $html = $driver->getPageSource();
             } catch (UnexpectedAlertOpenException $e) {
                 $alert = $driver->switchTo()->alert();
-                $alert->dismiss();
+                $alert->dismiss(); // Dismiss any alert
                 $html = $driver->getPageSource();
             }
 
@@ -178,6 +254,7 @@ class Scraper
                 return ["->no matchlist table"];
             }
 
+            // Extract table headers
             $headers = [];
             $tableCrawler->filter('tr.headerrow td')->each(function (Crawler $node) use (&$headers) {
                 $headerText = strtolower(str_replace(' ', '', $node->text()));
@@ -190,6 +267,7 @@ class Scraper
                 $rowData = [];
                 $tr->filter('td')->each(function (Crawler $td, $index) use ($headers, &$rowData) {
                     $value = trim($td->text());
+                    // Extract team IDs from links in home and away team columns
                     if ($td->filter('a')->count() && in_array($headers[$index], ['hjemmehold', 'udehold'])) {
                         $onclick = $td->filter('a')->attr('onclick');
                         if (preg_match("/ShowStanding\((?:'[^']*',\s*){5}'(\d+)'/", $onclick, $matches)) {
@@ -200,6 +278,7 @@ class Scraper
                         $rowData[$headers[$index]] = $value;
                     }
                 });
+                // Filter matches by venue
                 if (!empty($rowData) && isset($rowData['spillested']) && strtolower(trim($rowData['spillested'])) === strtolower(trim($venue))) {
                     $matches[] = $rowData;
                 }
@@ -211,10 +290,15 @@ class Scraper
         }
     }
 
+    /**
+     * Run the calendar scraper via AJAX to fetch and process match data.
+     */
     public function run_all_calendar_scraper()
     {
+        // Increase script execution time limit
         set_time_limit(0);
 
+        // Register shutdown function to handle fatal errors
         register_shutdown_function(function () use (&$log_id) {
             $error = error_get_last();
             if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
@@ -232,28 +316,33 @@ class Scraper
             }
         });
 
+        // Verify AJAX nonce for security
         check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
 
+        // Initialize response array
         $response = ['success' => false, 'data' => ['message' => '', 'matches' => []]];
         $log_data = ['messages' => []];
         $grand_total_matches = 0;
 
         try {
+            // Sanitize POST data
             $season = sanitize_text_field($_POST['season']);
             $linkStructure = sanitize_text_field($_POST['link_structure']);
             $venue = sanitize_text_field($_POST['venue']);
             $session_id = sanitize_text_field($_POST['session_id']);
 
+            // Retrieve all tournament pools for the season
             $all_pools = $this->loader->get_all_tournament_pools($season);
 
-            // Initialize log with starting message
+            // Initialize log entry
             $initial_message = "Starting session $session_id, searching venue: $venue";
             $log_id = $this->logger->start_log($season, 0, 0, 0, $session_id, $initial_message);
             $log_data['messages'][] = $initial_message;
 
-            // Initialize the WebDriver once
+            // Initialize WebDriver
             $driver = $this->init_driver();
 
+            // Process each tournament pool
             foreach ($all_pools as $pool) {
                 $region = $pool['region_id'];
                 $ageGroup = $pool['age_group_id'];
@@ -266,12 +355,14 @@ class Scraper
                 $google_color_id = $pool['google_color_id'] ?? 0;
                 $hex_color = $pool['hex_color'] ?? '#039be5';
 
+                // Construct URL for scraping
                 $url = str_replace(
                     ['{season}', '{region}', '{group}', '{pool}'],
                     [$season, $region, $ageGroup, $poolValue],
                     $linkStructure
                 );
 
+                // Scrape match results
                 $matches = $this->scrape_results($driver, $url, $venue);
 
                 $total_matches = is_array($matches) && !isset($matches['error']) ? count($matches) : 0;
@@ -283,6 +374,7 @@ class Scraper
                     $response['success'] = true;
                     $log_data['messages'][] = "Season: $season_name, Region: $region_name, Age Group: $age_group_name -> Pool $tournament_level - $pool_name ($poolValue): <strong>Found $total_matches matches</strong>";
 
+                    // Insert matches into Events Calendar
                     $events_calendar_sync = new Events_Calendar_Sync();
                     $events_calendar_sync->insertMatches(
                         $matches,
@@ -300,6 +392,7 @@ class Scraper
                         $hex_color
                     );
 
+                    // Uncomment to enable Google Calendar sync
                     // $google_calendar_sync = new Google_Calendar_Sync();
                     // $google_calendar_sync->insertMatches(
                     //     $matches,
@@ -322,8 +415,10 @@ class Scraper
                 $this->logger->update_log($log_id, $grand_total_matches, implode("\n", $log_data['messages']), 'running');
             }
 
+            // Clean up WebDriver
             $this->quit_driver();
 
+            // Finalize log entry
             $this->logger->update_log($log_id, $grand_total_matches, implode("\n", $log_data['messages']), 'completed');
             $response['data']['message'] = "Scraping completed! Found $grand_total_matches matches";
 
@@ -337,7 +432,7 @@ class Scraper
                 $this->logger->update_log($log_id, $grand_total_matches, implode("\n", $log_data['messages']), 'failed');
             }
 
-            // Ensure the driver quits if exception occurs
+            // Ensure WebDriver is closed on error
             if (isset($driver)) {
                 $this->quit_driver();
             }
@@ -347,11 +442,16 @@ class Scraper
         }
     }
 
+    /**
+     * Retrieve scraper progress via AJAX.
+     */
     public function get_scraper_progress()
     {
+        // Sanitize GET parameters
         $session_id = sanitize_text_field($_GET['session_id'] ?? '');
         $total_matches = sanitize_text_field($_GET['total_matches'] ?? '');
 
+        // Query log data from database
         $log = $this->wpdb->get_row(
             $this->wpdb->prepare(
                 "SELECT
@@ -367,13 +467,14 @@ class Scraper
         );
 
         if ($log) {
-
+            // Calculate progress percentage
             $calculated_progress = 0;
             if (floatval($total_matches) > 0) {
                 $calculated_progress = round(floatval($log->total_matches) / floatval($total_matches) * 100);
                 $calculated_progress = max(1, min(100, $calculated_progress));
             }
 
+            // Send JSON response with progress data
             wp_send_json([
                 'success' => true,
                 'data' => [
@@ -386,234 +487,55 @@ class Scraper
                 ]
             ]);
         } else {
+            // Send error response if no log found
             wp_send_json(['success' => false, 'data' => ['message' => 'No log found for session']]);
         }
     }
 
+    /**
+     * Run the team scraper via AJAX to fetch and process team data.
+     */
     public function run_all_teams_scraper()
     {
+        // Verify AJAX nonce for security
         check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
 
+        // Sanitize POST data
         $season = sanitize_text_field($_POST['season']);
         $linkStructure = sanitize_text_field($_POST['link_structure']);
 
+        // Retrieve all tournament pools for the season
         $all_pools = $this->loader->get_all_tournament_pools($season);
 
-        // Initialize the WebDriver once
+        // Initialize WebDriver
         $driver = $this->init_driver();
 
+        // Process each tournament pool
         foreach ($all_pools as $pool) {
             $region = $pool['region_id'];
             $ageGroup = $pool['age_group_id'];
             $poolValue = $pool['pool_value'];
 
+            // Construct URL for scraping
             $url = str_replace(
                 ['{season}', '{region}', '{group}', '{pool}'],
                 [$season, $region, $ageGroup, $poolValue],
                 $linkStructure
             );
 
+            // Scrape team results
             $teams = $this->scrape_team_results($driver, $url);
 
+            // Insert teams into database
             $this->loader->insert_teams($teams, $season, $region, $ageGroup, $poolValue);
         }
 
+        // Clean up WebDriver
         $this->quit_driver();
 
+        // Send success response
         $response['data']['message'] = "Scraping teams completed successfully!";
 
         wp_send_json($response);
-    }
-
-    public function fetch_page_html()
-    {
-        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
-
-        $season = sanitize_text_field($_POST['season']);
-        $ageGroup = sanitize_text_field($_POST['age_group']);
-        $region = sanitize_text_field($_POST['region']);
-        $url = sanitize_text_field($_POST['link_structure']);
-
-        $messages = [];
-
-        try {
-            $url = str_replace(
-                ['{season}', '{group}', '{region}'],
-                [$season, $ageGroup, $region],
-                "https://www.bordtennisportalen.dk/DBTU/HoldTurnering/Stilling/#1,{season},,{group},{region},,,,"
-            );
-            $messages[] = "Generated URL: $url";
-
-            $serverUrl = 'http://localhost:9515';
-            $capabilities = DesiredCapabilities::chrome();
-            $capabilities->setCapability('goog:chromeOptions', [
-                'args' => [
-                    '--headless',
-                    '--disable-gpu',
-                    '--no-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--user-data-dir=' . '/tmp/chrome-profile-' . uniqid(),
-                ]
-            ]);
-
-            $messages[] = "Initializing WebDriver...";
-            $driver = RemoteWebDriver::create($serverUrl, $capabilities);
-            $messages[] = "Navigating to URL...";
-            $driver->get($url);
-            $driver->manage()->timeouts()->implicitlyWait(10);
-
-            try {
-                $messages[] = "Fetching page source...";
-                $html = $driver->getPageSource();
-            } catch (UnexpectedAlertOpenException $e) {
-                $messages[] = "Unexpected alert encountered: " . $e->getMessage();
-                $alert = $driver->switchTo()->alert();
-                $alert->dismiss();
-                $html = $driver->getPageSource();
-            } finally {
-                $messages[] = "Closing WebDriver...";
-                $driver->quit();
-            }
-
-            wp_send_json([
-                'success' => true,
-                'html' => $html,
-                'messages' => $messages
-            ]);
-        } catch (Exception $e) {
-            $errorMessage = 'Error fetching page HTML: ' . htmlspecialchars($e->getMessage());
-            $messages[] = $errorMessage;
-            wp_send_json([
-                'success' => false,
-                'error' => $errorMessage,
-                'messages' => $messages
-            ]);
-        }
-    }
-
-    public function check_tournament_level()
-    {
-        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
-
-        $level_name = sanitize_text_field($_POST['level_name']);
-        $season_id = sanitize_text_field($_POST['season_id']);
-        $region_id = sanitize_text_field($_POST['region_id']);
-        $age_group_id = sanitize_text_field($_POST['age_group_id']);
-
-        $existingLevel = $this->wpdb->get_row(
-            $this->wpdb->prepare(
-                "SELECT id FROM {$this->wpdb->prefix}cal_sync_tournament_levels 
-            WHERE level_name = %s 
-            AND season_id = %s 
-            AND region_id = %s 
-            AND age_group_id = %s",
-                $level_name,
-                $season_id,
-                $region_id,
-                $age_group_id
-            )
-        );
-
-        wp_send_json([
-            'success' => true,
-            'exists' => !empty($existingLevel),
-            'level_id' => $existingLevel ? $existingLevel->id : null,
-            'error' => $this->wpdb->last_error
-        ]);
-    }
-
-    public function insert_tournament_level()
-    {
-        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
-
-        $level_name = sanitize_text_field($_POST['level_name']);
-        $season_id = sanitize_text_field($_POST['season_id']);
-        $region_id = sanitize_text_field($_POST['region_id']);
-        $age_group_id = sanitize_text_field($_POST['age_group_id']);
-        $google_color_id = '0';
-
-        $this->wpdb->insert(
-            "{$this->wpdb->prefix}cal_sync_tournament_levels",
-            [
-                'level_name' => $level_name,
-                'season_id' => $season_id,
-                'region_id' => $region_id,
-                'age_group_id' => $age_group_id,
-                'google_color_id' => $google_color_id
-            ],
-            ['%s', '%s', '%s', '%s', '%s']
-        );
-
-        wp_send_json([
-            'success' => $this->wpdb->insert_id !== false,
-            'level_id' => $this->wpdb->insert_id,
-            'error' => $this->wpdb->last_error
-        ]);
-    }
-
-    public function check_tournament_pool()
-    {
-        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
-
-        $tournament_level = sanitize_text_field($_POST['tournament_level']);
-        $pool_value = sanitize_text_field($_POST['pool_value']);
-        $season_id = sanitize_text_field($_POST['season_id']);
-        $region_id = sanitize_text_field($_POST['region_id']);
-        $age_group_id = sanitize_text_field($_POST['age_group_id']);
-
-        $existingPool = $this->wpdb->get_var(
-            $this->wpdb->prepare(
-                "SELECT COUNT(*) FROM {$this->wpdb->prefix}cal_sync_tournament_pools 
-            WHERE tournament_level = %s 
-            AND pool_value = %s 
-            AND season_id = %s 
-            AND region_id = %s 
-            AND age_group_id = %s",
-                $tournament_level,
-                $pool_value,
-                $season_id,
-                $region_id,
-                $age_group_id
-            )
-        );
-
-        wp_send_json([
-            'success' => true,
-            'exists' => $existingPool > 0,
-            'error' => $this->wpdb->last_error
-        ]);
-    }
-
-    public function insert_tournament_pool()
-    {
-        check_ajax_referer('calendar_scraper_nonce', '_ajax_nonce');
-
-        $tournament_level = sanitize_text_field($_POST['tournament_level']);
-        $pool_name = sanitize_text_field($_POST['pool_name']);
-        $pool_value = sanitize_text_field($_POST['pool_value']);
-        $is_playoff = intval($_POST['is_playoff']);
-        $season_id = sanitize_text_field($_POST['season_id']);
-        $region_id = sanitize_text_field($_POST['region_id']);
-        $age_group_id = sanitize_text_field($_POST['age_group_id']);
-
-        $this->wpdb->insert(
-            "{$this->wpdb->prefix}cal_sync_tournament_pools",
-            [
-                'tournament_level' => $tournament_level,
-                'pool_name' => $pool_name,
-                'pool_value' => $pool_value,
-                'is_playoff' => $is_playoff,
-                'season_id' => $season_id,
-                'region_id' => $region_id,
-                'age_group_id' => $age_group_id
-            ],
-            ['%s', '%s', '%s', '%d', '%s', '%s', '%s']
-        );
-
-        wp_send_json([
-            'success' => $this->wpdb->insert_id !== false,
-            'pool_id' => $this->wpdb->insert_id,
-            'error' => $this->wpdb->last_error
-        ]);
     }
 }

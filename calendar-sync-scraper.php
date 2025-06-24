@@ -3,7 +3,8 @@
 /**
  * Plugin Name:       Calendar Sync Scraper
  * Plugin URI:        https://github.com/ndegwamoche/calendar-sync-scraper
- * Description:       Scrapes calendar data from a specified URL and synchronizes it with Google Calendar. Supports automated scheduling and logs each run for tracking.
+ * Description:       Scrapes calendar data from a specified URL and synchronizes it with Google Calendar. 
+ * Supports automated scheduling and logs each run for tracking.
  * Version:           1.0.0
  * Requires at least: 5.8
  * Requires PHP:      7.4
@@ -43,7 +44,7 @@ require_once CAL_SYNC_SCRAPER_PATH . 'includes/class-events-calendar.php';   // 
 /**
  * Instantiate the database initialization class to set up necessary tables and data.
  */
-$db_init = new Calendar_Sync_Scraper\DB_Init();
+$db_init = new DB_Init();
 
 /**
  * Register plugin activation hooks to create database tables and insert initial data.
@@ -56,7 +57,7 @@ register_activation_hook(__FILE__, array($db_init, 'insert_initial_data')); // I
  * Hook into plugins_loaded to initialize the admin UI class.
  */
 add_action('plugins_loaded', function () {
-    new Calendar_Sync_Scraper\Admin_UI(); // Initialize the admin interface
+    new Admin_UI(); // Initialize the admin interface
 });
 
 /**
