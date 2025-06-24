@@ -22,9 +22,9 @@ class Google_Calendar_Sync
 
     public function __construct()
     {
-        $this->client_id = get_option('cal_sync_client_id', '862693741312-9oh0qqrma3tnd61pgu16fetc8ek83i57.apps.googleusercontent.com');
-        $this->client_secret = get_option('cal_sync_client_secret', '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');
-        $this->refresh_token = get_option('cal_sync_refresh_token', '1//04rqM0CDAoUpdCgYIARAAGAQSNwF-L9IrMntkuM3Fy6OrBdVv5gioJ2xquhfjQnznsc49wGn4fDmxPPEn7a-P0ipYFuqzAkD6syM');
+        $this->client_id = get_option('cal_sync_client_id', 'xxx');
+        $this->client_secret = get_option('cal_sync_client_secret', 'xxx');
+        $this->refresh_token = get_option('cal_sync_refresh_token', 'xxx');
         $this->calendar_id = 'primary';
         $this->time_offset = get_option('cal_sync_time_offset');
 
